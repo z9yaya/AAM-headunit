@@ -61,15 +61,27 @@ public:
 class AudioManagerClient : public com::xsembedded::ServiceProvider_proxy,
                      public DBus::ObjectProxy
 {
+public:
+    enum class FocusType
+    {
+        NONE,
+        PERMANENT,
+        TRANSIENT,
+    };
+private:
     std::map<std::string, int> streamToSessionIds;
-    std::string aaStreamName = "USB";
+    std::string aaStreamName = "MLENT";
     int aaSessionID = -1;
+    int usbSessionID = -1;
+    int fmSessionID = -1;
     int previousSessionID = -1;
     bool aaStreamRegistered = false;
     bool waitingForFocusLostEvent = false;
     MazdaEventCallbacks& callbacks;
-    std::set<int> channelsWaitingForFocus;
-    std::set<int> channelsWithFocus;
+    bool requestPending = false;
+    bool releasePending = false;
+    FocusType pendingFocus = FocusType::NONE;
+    FocusType currentFocus = FocusType::NONE;
 
     //These IDs are usually the same, but they depend on the startup order of the services on the car so we can't assume them 100% reliably
     void populateStreamTable();
@@ -81,8 +93,8 @@ public:
     bool canSwitchAudio();
 
     //calling requestAudioFocus directly doesn't work on the audio mgr
-    void audioMgrRequestAudioFocus(int chan);
-    void audioMgrReleaseAudioFocus(int chan);
+    void audioMgrRequestAudioFocus(FocusType type);
+    void audioMgrReleaseAudioFocus();
 
     virtual void Notify(const std::string& signalName, const std::string& payload) override;
 };
@@ -143,11 +155,11 @@ public:
     void releaseAudioFocus();
 
     void VideoFocusHappened(bool hasFocus, bool unrequested);
-    void AudioFocusHappend(int chan, bool hasFocus);
+    void AudioFocusHappend(AudioManagerClient::FocusType type);
 
     std::atomic<bool> connected;
     std::atomic<bool> videoFocus;
-    std::atomic<bool> audioFocus;
+    std::atomic<AudioManagerClient::FocusType> audioFocus;
 };
 
 class MazdaCommandServerCallbacks : public ICommandServerCallbacks
