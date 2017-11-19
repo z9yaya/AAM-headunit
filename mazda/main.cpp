@@ -178,7 +178,7 @@ int main (int argc, char *argv[])
             /* Start gstreamer pipeline and main loop */
 
             // GPS processing
-            //mzd_gps_start(&gps_location_handler);
+            mzd_gps_start(&gps_location_handler);
 
             printf("Starting Android Auto...\n");
 
@@ -188,7 +188,7 @@ int main (int argc, char *argv[])
 
             callbacks.connected = false;
             callbacks.videoFocus = false;
-            callbacks.audioFocus = false;
+            callbacks.audioFocus = AudioManagerClient::FocusType::NONE;
 
             printf("quitting...\n");
             //wake up night mode polling thread
@@ -198,7 +198,7 @@ int main (int argc, char *argv[])
             nm_thread.join();
 
             printf("waiting for gps_thread\n");
-            //mzd_gps_stop();
+            mzd_gps_stop();
 
             printf("shutting down\n");
 
