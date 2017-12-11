@@ -18,6 +18,7 @@
 
 #include <dbus-c++/dbus.h>
 #include <dbus-c++/glib-integration.h>
+#include <sys/time.h>
 
 #include "hu_uti.h"
 #include "hu_aap.h"
@@ -39,81 +40,120 @@ __asm__(".symver realpath1,realpath1@GLIBC_2.11.1");
 gst_app_t gst_app;
 IHUAnyThreadInterface* g_hu = nullptr;
 
-static void nightmode_thread_func(std::condition_variable& quitcv, std::mutex& quitmutex) 
+static void nightmode_thread_func(std::condition_variable& quitcv, std::mutex& quitmutex)
 {
-	int nightmode = NM_NO_VALUE;
-	mzd_nightmode_start();
+    int nightmode = NM_NO_VALUE;
+    mzd_nightmode_start();
+    //Offset so the GPS and NM thread are not perfectly in sync testing each second
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+
     while (true)
-	{		
-		int nightmodenow = mzd_is_night_mode_set();
+    {
+        int nightmodenow = mzd_is_night_mode_set();
 
-		// We send nightmode status periodically, otherwise Google Maps
-		// doesn't switch to nightmode if it's started late. Even if the
-		// other AA UI is already in nightmode.
-		if (nightmodenow != NM_NO_VALUE) {
-			nightmode = nightmodenow;
+        // We send nightmode status periodically, otherwise Google Maps
+        // doesn't switch to nightmode if it's started late. Even if the
+        // other AA UI is already in nightmode.
+        if (nightmodenow != NM_NO_VALUE) {
+            nightmode = nightmodenow;
 
-			g_hu->hu_queue_command([nightmodenow](IHUConnectionThreadInterface& s)
-			{
-				HU::SensorEvent sensorEvent;
-				sensorEvent.add_night_mode()->set_is_night(nightmodenow);
+            g_hu->hu_queue_command([nightmodenow](IHUConnectionThreadInterface& s)
+            {
+                HU::SensorEvent sensorEvent;
+                sensorEvent.add_night_mode()->set_is_night(nightmodenow);
 
-				s.hu_aap_enc_send_message(0, AA_CH_SEN, HU_SENSOR_CHANNEL_MESSAGE::SensorEvent, sensorEvent);
-			});
-		}
-		
-		{
-			std::unique_lock<std::mutex> lk(quitmutex);
-    		if (quitcv.wait_for(lk, std::chrono::milliseconds(1000)) == std::cv_status::no_timeout)
-    		{
-    			break;
-    		}
-		}
-	}
+                s.hu_aap_enc_send_message(0, AA_CH_SEN, HU_SENSOR_CHANNEL_MESSAGE::SensorEvent, sensorEvent);
+            });
+        }
 
-	mzd_nightmode_stop();
+        {
+            std::unique_lock<std::mutex> lk(quitmutex);
+            if (quitcv.wait_for(lk, std::chrono::milliseconds(1000)) == std::cv_status::no_timeout)
+            {
+                break;
+            }
+        }
+    }
+
+    mzd_nightmode_stop();
 }
 
-void gps_location_handler(uint64_t timestamp, double lat, double lng, double bearing, double speed, double alt, double accuracy) {
-	logd("[LOC][%" PRIu64 "] - Lat: %f Lng: %f Brng: %f Spd: %f Alt: %f Acc: %f \n", 
-			timestamp, lat, lng, bearing, speed, alt, accuracy);
+static void gps_thread_func(std::condition_variable& quitcv, std::mutex& quitmutex)
+{
+    GPSData data, newData;
+    uint64_t oldTs = 0;
+    int debugLogCount = 0;
+    mzd_gps2_start();
 
-	g_hu->hu_queue_command([timestamp, lat, lng, bearing, speed, alt, accuracy](IHUConnectionThreadInterface& s)
-	{
-		HU::SensorEvent sensorEvent;
-		HU::SensorEvent::LocationData* location = sensorEvent.add_location_data();
-		location->set_timestamp(timestamp);
-		location->set_latitude(static_cast<int32_t>(lat * 1E7));
-		location->set_longitude(static_cast<int32_t>(lng * 1E7));
+    //Not sure if this is actually required but the built-in Nav code on CMU does it
+    mzd_gps2_set_enabled(true);
 
-		if (bearing != 0) {
-			location->set_bearing(static_cast<int32_t>(bearing * 1E6));
-		}
+    while (true)
+    {
+        if (mzd_gps2_get(newData) && !data.IsSame(newData))
+        {
+            data = newData;
+            timeval tv;
+            gettimeofday(&tv, nullptr);
+            uint64_t timestamp = tv.tv_sec * 1000000 + tv.tv_usec;
+            if (debugLogCount < 50) //only print the first 50 to avoid spamming the log and breaking the opera text box
+            {
+                logd("GPS data: %d %d %f %f %d %f %f %f %f   \n",data.positionAccuracy, data.uTCtime, data.latitude, data.longitude, data.altitude, data.heading, data.velocity, data.horizontalAccuracy, data.verticalAccuracy);
+                logd("Delta %f\n", (timestamp - oldTs)/1000000.0);
+                debugLogCount++;
+            }
+            oldTs = timestamp;
 
-		// AA expects speed in knots, so convert back
-		location->set_speed(static_cast<int32_t>((speed / 1.852) * 1E3));
+            g_hu->hu_queue_command([data, timestamp](IHUConnectionThreadInterface& s)
+            {
+                HU::SensorEvent sensorEvent;
+                HU::SensorEvent::LocationData* location = sensorEvent.add_location_data();
+                //AA uses uS and the gps data just has seconds, just use the current time to get more precision so AA can
+                //interpolate better
+                location->set_timestamp(timestamp);
+                location->set_latitude(static_cast<int32_t>(data.latitude * 1E7));
+                location->set_longitude(static_cast<int32_t>(data.longitude * 1E7));
 
-		if (alt != 0) {
-			location->set_altitude(static_cast<int32_t>(alt * 1E2));
-		}
+                location->set_bearing(static_cast<int32_t>(data.heading * 1E6));
+                //assuming these are the same units as the Android Location API (the rest are)
+                double velocityMetersPerSecond = data.velocity * 0.277778; //convert km/h to m/s
+                location->set_speed(static_cast<int32_t>(velocityMetersPerSecond * 1E3));
 
-		location->set_accuracy(static_cast<int32_t>(accuracy * 1E3));
+                location->set_altitude(static_cast<int32_t>(data.altitude * 1E2));
+                location->set_accuracy(static_cast<int32_t>(data.horizontalAccuracy * 1E3));
 
-		s.hu_aap_enc_send_message(0, AA_CH_SEN, HU_SENSOR_CHANNEL_MESSAGE::SensorEvent, sensorEvent);
-	});
+                s.hu_aap_enc_send_message(0, AA_CH_SEN, HU_SENSOR_CHANNEL_MESSAGE::SensorEvent, sensorEvent);
+            });
+        }
+
+        {
+            std::unique_lock<std::mutex> lk(quitmutex);
+            //The timestamps on the GPS events are in seconds, but based on logging the data actually changes faster with the same timestamp
+            if (quitcv.wait_for(lk, std::chrono::milliseconds(250)) == std::cv_status::no_timeout)
+            {
+                break;
+            }
+        }
+    }
+
+    mzd_gps2_set_enabled(false);
+
+    mzd_gps2_stop();
 }
+
+
 
 
 int main (int argc, char *argv[])
-{	
-	//Force line-only buffering so we can see the output during hangs
-	setvbuf(stdout, NULL, _IOLBF, 0);
-	setvbuf(stderr, NULL, _IOLBF, 0);
+{
+    //Force line-only buffering so we can see the output during hangs
+    setvbuf(stdout, NULL, _IOLBF, 0);
+    setvbuf(stderr, NULL, _IOLBF, 0);
 
-	GOOGLE_PROTOBUF_VERIFY_VERSION;
+    GOOGLE_PROTOBUF_VERIFY_VERSION;
 
-	hu_log_library_versions();
-	hu_install_crash_handler();
+    hu_log_library_versions();
+    hu_install_crash_handler();
 
     DBus::_init_threading();
 
@@ -174,11 +214,9 @@ int main (int argc, char *argv[])
             std::mutex quitmutex;
 
             std::thread nm_thread([&quitcv, &quitmutex](){ nightmode_thread_func(quitcv, quitmutex); } );
+            std::thread gp_thread([&quitcv, &quitmutex](){ gps_thread_func(quitcv, quitmutex); } );
 
             /* Start gstreamer pipeline and main loop */
-
-            // GPS processing
-            mzd_gps_start(&gps_location_handler);
 
             printf("Starting Android Auto...\n");
 
@@ -188,17 +226,17 @@ int main (int argc, char *argv[])
 
             callbacks.connected = false;
             callbacks.videoFocus = false;
-            callbacks.audioFocus = false;
+            callbacks.audioFocus = AudioManagerClient::FocusType::NONE;
 
             printf("quitting...\n");
-            //wake up night mode polling thread
+            //wake up night mode  and gps polling threads
             quitcv.notify_all();
 
             printf("waiting for nm_thread\n");
             nm_thread.join();
 
             printf("waiting for gps_thread\n");
-            mzd_gps_stop();
+            gp_thread.join();
 
             printf("shutting down\n");
 
@@ -224,6 +262,5 @@ int main (int argc, char *argv[])
         return 1;
     }
 
-	return 0;
+    return 0;
 }
-

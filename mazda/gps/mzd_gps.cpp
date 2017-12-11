@@ -1,85 +1,148 @@
+
+#include <dbus/dbus.h>
+#include <dbus-c++/dbus.h>
+#include <memory>
+
+#include "../dbus/generated_cmu.h"
+
+#define LOGTAG "mazda-gps"
+
+#include "hu_uti.h"
+
 #include "mzd_gps.h"
 
-#include <cstdlib>
-#include <cstdio>
-#include <cstring>
-#include <pthread.h>
-#include <inttypes.h>
-#include <ctime>
+#define SERVICE_BUS_ADDRESS "unix:path=/tmp/dbus_service_socket"
 
-#define LOGTAG "mzd-gps"
-#include "../hu/hu_uti.h"
+enum LDSControl
+{
+    LDS_READ_START = 0,
+    LDS_READ_STOP = 1
+};
 
-#include "nmeaparse/NMEAParser.h"
-#include "nmeaparse/GPSService.h"
-
-static volatile bool running = false;
-
-void* process_gps(void* arg) {
-    auto callbackPtr = (void(*)(uint64_t, double, double, double, double, double, double))arg;
-
-    printf("GPS thread started...");
-
-    FILE* fp;
-    char* gps_line = NULL;
-    size_t len = 0;
-    ssize_t read;
-
-    // GPS hardware is attached to ttymxc2 on CMU and communicates
-    // via text NMEA protocol.
-    fp = fopen("/dev/ttymxc2", "r");
-    if (fp == NULL) return NULL;
-
-    // We need to parse NMEA sentences into a solid fix.
-    nmea::NMEAParser parser;
-    nmea::GPSService gps(parser);
-
-    uint64_t last_timestamp = 0;
-
-    // GPS update callback
-    gps.onUpdate += [&gps, callbackPtr, &last_timestamp]() {
-        // First check if we have a positive fix, don't report broken fixes.
-        auto& fix = gps.fix;
-        if (!fix.locked() || fix.horizontalAccuracy() > 80) return;
-        if (fix.latitude == 0 && fix.longitude == 0) return;    // Sometimes we get zero here, ignore it then.
-
-        // Don't flood the sensors channel
-        if (static_cast<uint64_t>(fix.timestamp.getTime()) - last_timestamp < 300) return;
-        last_timestamp = static_cast<uint64_t>(fix.timestamp.getTime());
-
-        // epoch timestamp, latitude, longitude, bearing, speed, altitude, accuracy
-        (*callbackPtr)(fix.timestamp.getTime(), 
-                    fix.latitude, 
-                    fix.longitude,
-                    fix.travelAngle,
-                    fix.speed, 
-                    fix.altitude,
-                    fix.horizontalAccuracy());
-    };
-
-    while (running && ((read = getline(&gps_line, &len, fp)) != -1)) {
-        try {
-            parser.readLine(gps_line);
-        } catch (nmea::NMEAParseError& e) {
-            loge("GPS parse error: %s.", e.message.c_str());
-        }
+class GPSLDSCLient : public com::jci::lds::data_proxy,
+        public DBus::ObjectProxy
+{
+public:
+    GPSLDSCLient(DBus::Connection &connection)
+        : DBus::ObjectProxy(connection, "/com/jci/lds/data", "com.jci.lds.data")
+    {
     }
 
-    fclose(fp);
-    return nullptr;
+    virtual void GPSDiagnostics(const uint8_t& dTCId, const uint8_t& dTCAction) override {}
+};
+
+class GPSLDSControl : public com::jci::lds::control_proxy,
+        public DBus::ObjectProxy
+{
+public:
+    GPSLDSControl(DBus::Connection &connection)
+        : DBus::ObjectProxy(connection, "/com/jci/lds/control", "com.jci.lds.control")
+    {
+    }
+
+    virtual void ReadStatus(const int32_t& commandReply, const int32_t& status) override;
+};
+
+static std::unique_ptr<GPSLDSCLient> gps_client;
+static std::unique_ptr<GPSLDSControl> gps_control;
+static int get_data_errors_in_a_row = 0;
+
+void GPSLDSControl::ReadStatus(const int32_t& commandReply, const int32_t& status)
+{
+    //not sure what this does yet
+    logw("Read status changed commandReply %i status %i\n", commandReply, status);
 }
 
-static pthread_t gps_thread = 0;
 
-void mzd_gps_start(void(*callbackPtr)(uint64_t, double, double, double, double, double, double)) {
-    running = true;
+void mzd_gps2_start()
+{
+    if (gps_client != NULL)
+        return;
 
-    // Using std::thread and/or passing std::function throws an exception on CMU for
-    // some reason. Hence store it as a static.
-    pthread_create(&gps_thread, NULL, &process_gps, (void*)callbackPtr);
+    try
+    {
+        DBus::Connection gpservice_bus(SERVICE_BUS_ADDRESS, false);
+        gpservice_bus.register_bus();
+        gps_client.reset(new GPSLDSCLient(gpservice_bus));
+        gps_control.reset(new GPSLDSControl(gpservice_bus));
+    }
+    catch(DBus::Error& error)
+    {
+        loge("DBUS: Failed to connect to SERVICE bus %s: %s", error.name(), error.message());
+        gps_client.reset();
+        gps_control.reset();
+        return;
+    }
+
+    printf("GPS service connection established.\n");
 }
 
-void mzd_gps_stop() {
-    running = false;
-    pthread_join(gps_thread, NULL);
+bool mzd_gps2_get(GPSData& data)
+{
+    if (gps_client == NULL)
+        return false;
+
+    try
+    {
+        gps_client->GetPosition(data.positionAccuracy, data.uTCtime, data.latitude, data.longitude, data.altitude, data.heading, data.velocity, data.horizontalAccuracy, data.verticalAccuracy);
+
+        if (get_data_errors_in_a_row > 0)
+        {
+            loge("DBUS: GetPosition hid %i failures", get_data_errors_in_a_row);
+            get_data_errors_in_a_row = 0;
+        }
+
+        //timestamp 0 means "invalid" and positionAccuracy 0 means "no lock"
+        if (data.uTCtime == 0 || data.positionAccuracy == 0)
+            return false;
+
+        return true;
+    }
+    catch(DBus::Error& error)
+    {
+        get_data_errors_in_a_row++;
+        //prevent insane log spam
+        if (get_data_errors_in_a_row < 10)
+        {
+            loge("DBUS: GetPosition failed %s: %s", error.name(), error.message());
+        }
+        return false;
+    }
 }
+
+void mzd_gps2_set_enabled(bool bEnabled)
+{
+    if (gps_control)
+    {
+        try
+        {
+            gps_control->ReadControl(bEnabled ? LDS_READ_START : LDS_READ_STOP);
+        }
+        catch(DBus::Error& error)
+        {
+            loge("DBUS: ReadControl failed %s: %s", error.name(), error.message());
+        }
+    }
+}
+
+void mzd_gps2_stop()
+{
+    gps_client.reset();
+    gps_control.reset();
+}
+
+bool GPSData::IsSame(const GPSData& other) const
+{
+    if (uTCtime == 0 && other.uTCtime == 0)
+        return true; //other members don't matter since timestamp 0 means "invalid"
+    return positionAccuracy == other.positionAccuracy &&
+            uTCtime == other.uTCtime &&
+            int32_t(latitude * 1E7) == int32_t(other.latitude * 1E7) &&
+            int32_t(longitude * 1E7) == int32_t(other.longitude * 1E7) &&
+            altitude == other.altitude &&
+            int32_t(heading * 1E7) == int32_t(other.heading * 1E7) &&
+            int32_t(velocity * 1E7) == int32_t(other.velocity * 1E7) &&
+            int32_t(horizontalAccuracy * 1E7) == int32_t(other.horizontalAccuracy * 1E7) &&
+            int32_t(verticalAccuracy * 1E7) == int32_t(other.verticalAccuracy * 1E7);
+}
+
