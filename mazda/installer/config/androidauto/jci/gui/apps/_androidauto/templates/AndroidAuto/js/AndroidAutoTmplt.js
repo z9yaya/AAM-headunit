@@ -24,7 +24,6 @@ AndroidAutoTmplt.prototype.handleControllerEvent = function(eventID)
 {
     log.debug('handleController() called, eventID: ' + eventID);
 	switch(eventID) {
-		
 		case "ccw":
 		case "up":
 			document.getElementById("aaStatusText").scrollTop -= 100;
