@@ -57,6 +57,48 @@ public:
         SetRequiredSurfaces(idString.str(), fadeOpera ? 1 : 0);
     }
 };
+class BTHFManagerClient : public com::jci::bthf_proxy,
+                          public DBus::ObjectProxy
+{
+public:
+  enum class CallStatus
+  {
+    BTHF_STATE_IDLE = 0,
+    BTHF_STATE_INCOMING = 1,
+    BTHF_STATE_ACTIVE = 2,
+    BTHF_STATE_END = 3,
+  };
+
+  uint32_t currentBthfState;
+
+public:
+  BTHFManagerClient(MazdaEventCallbacks& callbacks, DBus::Connection &connection)
+          : DBus::ObjectProxy(connection, "/com/jci/bthf", "com.jci.bthf"){
+
+          }
+  ~BTHFManagerClient();
+
+  bool hasBthfFocus();
+
+  virtual void CallStatus(const uint32_t& bthfstate, const uint32_t& call1status, const uint32_t& call2status, const ::DBus::Struct< std::vector< uint8_t > >& call1Number, const ::DBus::Struct< std::vector< uint8_t > >& call2Number) override  {
+		currentBthfState = bthfstate;
+    logw("currentBthfState: %i\n", int(currentBthfState));
+	}
+  virtual void BatteryIndicator(const uint32_t& minValue, const uint32_t& maxValue, const uint32_t& currentValue) override {}
+  virtual void SignalStrength(const uint32_t& minValue, const uint32_t& maxValue, const uint32_t& currentValue) override {}
+  virtual void RoamIndicator(const uint32_t& value) override {}
+  virtual void NewServiceIndicator(const bool& value) override {}
+  virtual void PhoneChargeIndicator(const uint32_t& value) override {}
+  virtual void SmsPresentIndicator(const bool& value) override {}
+  virtual void VoiceMailIndicator(const bool& value) override {}
+  virtual void LowBatteryIndicator(const bool& value) override {}
+  virtual void BthfReadyStatus(const uint32_t& hftReady, const uint32_t& reasonCode) override {}
+  virtual void BthfBusyReason(const uint32_t& busyReason) override {}
+  virtual void MicStatus(const bool& isMicMuted) override {}
+  virtual void BargeinStatus(const bool& isBargeinActive) override {}
+  virtual void BthfSettingsResponse(const ::DBus::Struct< std::vector< uint8_t > >& callsettings) override {}
+  virtual void FailureReasonCodes(const uint32_t& errorType) override {}
+};
 
 class AudioManagerClient : public com::xsembedded::ServiceProvider_proxy,
                      public DBus::ObjectProxy
@@ -75,6 +117,7 @@ private:
     int usbSessionID = -1;
     int fmSessionID = -1;
     int previousSessionID = -1;
+    int BTHFSessionID = -1;
     bool aaStreamRegistered = false;
     bool waitingForFocusLostEvent = false;
     MazdaEventCallbacks& callbacks;
@@ -135,6 +178,7 @@ class MazdaEventCallbacks : public IHUConnectionThreadEventCallbacks {
 
     std::unique_ptr<AudioManagerClient> audioMgrClient;
     std::unique_ptr<VideoManagerClient> videoMgrClient;
+    std::unique_ptr<BTHFManagerClient> bthfMgrClient;
 public:
     MazdaEventCallbacks(DBus::Connection& serviceBus, DBus::Connection& hmiBus);
     ~MazdaEventCallbacks();
