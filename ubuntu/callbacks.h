@@ -7,6 +7,7 @@
 #include "command_server.h"
 
 #include <asoundlib.h>
+#include "version.h"
 
 class VideoOutput;
 class AudioOutput;
@@ -59,4 +60,6 @@ public:
     virtual bool HasVideoFocus() const override;
     virtual void TakeVideoFocus() override;
     virtual std::string GetLogPath() const override;
+    virtual std::string GetVersion() const override;
+    virtual std::string ChangeParameterConfig(std::string param, std::string value, std::string type) const override;
 };

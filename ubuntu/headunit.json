@@ -1,0 +1,5 @@
+{
+    "launchOnDevice": true,
+    "carGPS": true,
+    "wifiTransport":true
+}

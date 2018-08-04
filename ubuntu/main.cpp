@@ -14,6 +14,10 @@
 #include "outputs.h"
 #include "callbacks.h"
 
+#include "json/json.hpp"
+#include "config.h"
+using json = nlohmann::json;
+
 gst_app_t gst_app;
 
 float g_dpi_scalefactor = 1.0f;
@@ -79,19 +83,24 @@ main(int argc, char *argv[]) {
 
         DesktopCommandServerCallbacks commandCallbacks;
         CommandServer commandServer(commandCallbacks);
+        printf("headunit version: %s \n", commandCallbacks.GetVersion().c_str());
         if (!commandServer.Start())
         {
             loge("Command server failed to start");
         }
 
-        //loop to emulate the caar
+        config::configFile="headunit.json";
+        config::readConfig();
+
+        //loop to emulate the car
+        printf("Looping\n");
         while(true)
         {
             DesktopEventCallbacks callbacks;
             HUServer headunit(callbacks);
 
             /* Start AA processing */
-            ret = headunit.hu_aap_start(HU_TRANSPORT_TYPE::USB, true);
+            ret = headunit.hu_aap_start(config::transport_type, true);
             if (ret < 0) {
                     printf("Phone is not connected. Connect a supported phone and restart.\n");
                     return 0;
@@ -102,7 +111,7 @@ main(int argc, char *argv[]) {
             g_hu = &headunit.GetAnyThreadInterface();
             commandCallbacks.eventCallbacks = &callbacks;
 
-              /* Start gstreamer pipeline and main loop */
+            /* Start gstreamer pipeline and main loop */
             ret = gst_loop(app);
             if (ret < 0) {
                     printf("STATUS:gst_loop() ret: %d\n", ret);

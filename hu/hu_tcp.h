@@ -10,9 +10,9 @@ class HUTransportStreamTCP : public HUTransportStream
     struct sockaddr_in  srv_addr = {0};
     socklen_t srv_len = 0;
 
-    int wifi_direct = 1;//0;
+    int wifi_direct = 0;//0;
     int itcp_deinit ();
-    int itcp_accept (int tmo);
+    int itcp_accept ();
     int itcp_init();
  public:
     ~HUTransportStreamTCP();

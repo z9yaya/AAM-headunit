@@ -220,6 +220,7 @@ copy_aa_binaries()
     log_message "Changing permissions ... "
     chmod 755 /tmp/mnt/data_persist/dev/bin/headunit || "for headunit failed ... "
     chmod 755 /tmp/mnt/data_persist/dev/bin/headunit-wrapper || "for headunit-wrapper failed ... "
+    chmod 755 /tmp/mnt/data_persist/dev/bin/headunit.json || "for headunit.json failed ... "
     log_message "DONE\n"
 }
 
@@ -229,6 +230,7 @@ remove_aa_binaries()
     log_message "Removing AA files ... "
     rm /tmp/mnt/data_persist/dev/bin/headunit || log_message "headunit failed ... "
     rm /tmp/mnt/data_persist/dev/bin/headunit-wrapper || log_message "headunit-wrapper failed ... "
+    rm /tmp/mnt/data_persist/dev/bin/headunit.json || log_message "headunit.json failed ... "
     rm -rf /tmp/mnt/data_persist/dev/bin/headunit_libs || log_message "headunit_libs failed ... "
     rm -rf /jci/gui/apps/_androidauto || log_message "_androidauto failed ... "
     rm /jci/opera/opera_dir/userjs/additionalApps.* || "additionalApps.* failed ... "

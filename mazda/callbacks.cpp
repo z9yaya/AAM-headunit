@@ -4,6 +4,7 @@
 #include "audio.h"
 #include "main.h"
 #include "bt/mzd_bluetooth.h"
+#include "config.h"
 
 #include "json/json.hpp"
 using json = nlohmann::json;
@@ -292,6 +293,37 @@ void MazdaCommandServerCallbacks::TakeVideoFocus()
 std::string MazdaCommandServerCallbacks::GetLogPath() const
 {
     return "/tmp/mnt/data/headunit.log";
+}
+
+std::string MazdaCommandServerCallbacks::GetVersion() const
+{
+    return HEADUNIT_VERSION;
+}
+
+std::string MazdaCommandServerCallbacks::ChangeParameterConfig(std::string param, std::string value, std::string type) const
+{
+    bool updateHappened = false;
+    if (type == "string")
+    {
+        config::updateConfigString(param, value);
+        updateHappened = true;
+    }
+    if (type == "bool")
+    {
+        if (value == "false")
+        {
+            config::updateConfigBool(param, false);
+            updateHappened = true;
+        }
+        if (value == "true")
+        {
+            config::updateConfigBool(param, true);
+            updateHappened = true;
+        }
+    }
+    if (updateHappened)
+       return "Config updated";
+    return "Config wasn't updated. Wrong parameters.";
 }
 
 void AudioManagerClient::aaRegisterStream()

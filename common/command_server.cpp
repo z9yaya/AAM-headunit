@@ -25,11 +25,27 @@ CommandServer::CommandServer(ICommandServerCallbacks &callbacks)
        result["audioFocus"] = callbacks.HasAudioFocus();
        std::string logPath = callbacks.GetLogPath();
        if (logPath.length() > 0)
-         result["logPath"] = logPath;
+       {
+           result["logPath"] = logPath;
+       }
+       result["headunitVersion"] = callbacks.GetVersion();
 
        resp.body << std::setw(4) << result;
 
        logd("Got /status call. response:\n%s\n", resp.body.str().c_str());
+
+       AddCORSHeaders(resp);
+    });
+
+    server.get("/updateConfig", [&callbacks](WPP::Request& req, WPP::Response& resp)
+    {
+       resp.type = "application/json";
+       json result;
+       result["result"]=callbacks.ChangeParameterConfig(req.query["parameter"], req.query["value"], req.query["type"]);
+
+       resp.body << std::setw(4) << result;
+
+       logd("Got /updateConfig call. response:\n%s\n", resp.body.str().c_str());
 
        AddCORSHeaders(resp);
     });

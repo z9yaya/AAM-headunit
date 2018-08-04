@@ -38,6 +38,7 @@ SRCS += gps/mzd_gps.cpp
 SRCS += bt/mzd_bluetooth.cpp
 
 SRCS += outputs.cpp
+SRCS += $(TOP)/common/config.cpp
 SRCS += callbacks.cpp
 SRCS += main.cpp
 
@@ -46,7 +47,10 @@ DEPS = $(addsuffix .arm.d, $(basename $(SRCS)))
 
 APP = headunit
 
-all: proto dbusxx $(APP)
+all: tag proto dbusxx $(APP)
+
+tag:
+	echo "#define HEADUNIT_VERSION \"`git describe --tag`\"" > version.h
 
 proto: $(TOP)/hu/generated.arm/hu.pb.cc
 
@@ -59,7 +63,7 @@ $(TOP)/hu/generated.arm/hu.pb.cc $(TOP)/hu/generated.arm/hu.pb.h: $(TOP)/hu/hu.p
 	$(PROTOTOOLCHAIN)/bin/protoc $< --proto_path=$(TOP)/hu/ --cpp_out=$(TOP)/hu/generated.arm/
 
 dbus/generated_cmu.h: dbus/cmu_interfaces.xml
-	cd dbus ; dbusxx-xml2cpp cmu_interfaces.xml --proxy=generated_cmu.h
+	cd dbus ; ./dbusxx-xml2cpp cmu_interfaces.xml --proxy=generated_cmu.h
 
 %.arm.o : %.c
 	$(CC) -MD -g $(CFLAGS) $(INCLUDES) -c $<  -o $@
@@ -74,8 +78,7 @@ clean:
 	rm -f *~ $(TOP)/hu/generated.arm/* dbus/generated_*.* $(OBJS) $(APP) $(DEPS) $(APPLICATION_NAME)_*.zip
 
 install: all
-	cp -a -f headunit installer/config/androidauto/data_persist/dev/bin/
-
+	cp -a -f headunit installer/config/androidauto/data_persist/dev/bin/; cp -a -f headunit.json installer/config/androidauto/data_persist/dev/bin/
 release: install
 	zip -r -FS $(APPLICATION_NAME)_$(APPLICATION_VERSION).zip installer/
 
