@@ -96,6 +96,15 @@ function AAdisplayError(location, err)
     }
 }
 
+function AAdisplayVersion(AAheadunitVersion)
+{
+    var pversion = document.getElementById('aaText1');
+    if (pversion != null)
+    {
+        pversion.innerHTML = pversion.innerHTML + " " + AAheadunitVersion;
+    }
+}
+
 function AAlogPoll()
 {
 
@@ -176,6 +185,7 @@ _androidautoApp.prototype._StartContextReady = function ()
         {
             if (currentStatus != null)
             {
+                AAdisplayVersion(currentStatus.headunitVersion);
                 if (!currentStatus.videoFocus && currentStatus.connected)
                 {
                     var takeFocus = function()

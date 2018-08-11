@@ -19,6 +19,7 @@
 #include <dbus-c++/dbus.h>
 #include <dbus-c++/glib-integration.h>
 #include <sys/time.h>
+#include <sys/stat.h>
 
 #include "hu_uti.h"
 #include "hu_aap.h"
@@ -31,9 +32,12 @@
 #include "command_server.h"
 #include "callbacks.h"
 #include "glib_utils.h"
+#include "config.h"
 
 #define HMI_BUS_ADDRESS "unix:path=/tmp/dbus_hmi_socket"
 #define SERVICE_BUS_ADDRESS "unix:path=/tmp/dbus_service_socket"
+// Check the content folder. sd_nav still exists without the card installed
+#define SD_CARD_PATH "/tmp/mnt/sd_nav/content"
 
 __asm__(".symver realpath1,realpath1@GLIBC_2.11.1");
 
@@ -90,7 +94,7 @@ static void gps_thread_func(std::condition_variable& quitcv, std::mutex& quitmut
 
     while (true)
     {
-        if (mzd_gps2_get(newData) && !data.IsSame(newData))
+        if (config::carGPS && mzd_gps2_get(newData) && !data.IsSame(newData))
         {
             data = newData;
             timeval tv;
@@ -114,7 +118,27 @@ static void gps_thread_func(std::condition_variable& quitcv, std::mutex& quitmut
                 location->set_latitude(static_cast<int32_t>(data.latitude * 1E7));
                 location->set_longitude(static_cast<int32_t>(data.longitude * 1E7));
 
-                location->set_bearing(static_cast<int32_t>(data.heading * 1E6));
+                // If the sd card exists then reverse heading. This should only be used on installs that have the 
+                // reversed heading issue.
+                double newHeading = data.heading;
+
+                if (config::reverseGPS)
+                {
+                    const char* sdCardFolder;
+                    sdCardFolder = SD_CARD_PATH;
+                    struct stat sb;
+    
+                    if (stat(sdCardFolder, &sb) == 0 && S_ISDIR(sb.st_mode))
+                    {
+                        newHeading = data.heading + 180;
+                        if (newHeading >= 360)
+                        {
+                            newHeading = newHeading - 360;
+                        }
+                    }
+				}
+
+                location->set_bearing(static_cast<int32_t>(newHeading * 1E6));
                 //assuming these are the same units as the Android Location API (the rest are)
                 double velocityMetersPerSecond = data.velocity * 0.277778; //convert km/h to m/s
                 location->set_speed(static_cast<int32_t>(velocityMetersPerSecond * 1E3));
@@ -163,6 +187,7 @@ int main (int argc, char *argv[])
     {
         MazdaCommandServerCallbacks commandCallbacks;
         CommandServer commandServer(commandCallbacks);
+        printf("headunit version: %s \n", commandCallbacks.GetVersion().c_str());
         if (!commandServer.Start())
         {
             loge("Command server failed to start");
@@ -175,6 +200,8 @@ int main (int argc, char *argv[])
             printf("###TESTMODE_OK###\n");
             return 0;
         }
+
+        config::readConfig();
 
         printf("Looping\n");
         while (true)
@@ -201,7 +228,7 @@ int main (int argc, char *argv[])
             commandCallbacks.eventCallbacks = &callbacks;
 
             //Wait forever for a connection
-            int ret = headunit.hu_aap_start(HU_TRANSPORT_TYPE::USB, true);
+            int ret = headunit.hu_aap_start(config::transport_type, true);
             if (ret < 0) {
                 loge("Something bad happened");
                 continue;
@@ -227,6 +254,7 @@ int main (int argc, char *argv[])
             callbacks.connected = false;
             callbacks.videoFocus = false;
             callbacks.audioFocus = AudioManagerClient::FocusType::NONE;
+            callbacks.inCall = false;
 
             printf("quitting...\n");
             //wake up night mode  and gps polling threads

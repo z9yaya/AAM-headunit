@@ -10,6 +10,7 @@
 #include <asoundlib.h>
 
 #include "dbus/generated_cmu.h"
+#include "version.h"
 
 class VideoOutput;
 class AudioOutput;
@@ -72,15 +73,10 @@ private:
     std::map<std::string, int> streamToSessionIds;
     std::string aaStreamName = "MLENT";
     int aaSessionID = -1;
-    int usbSessionID = -1;
-    int fmSessionID = -1;
+    int aaTransientSessionID = -1;
     int previousSessionID = -1;
-    bool aaStreamRegistered = false;
     bool waitingForFocusLostEvent = false;
     MazdaEventCallbacks& callbacks;
-    bool requestPending = false;
-    bool releasePending = false;
-    FocusType pendingFocus = FocusType::NONE;
     FocusType currentFocus = FocusType::NONE;
 
     //These IDs are usually the same, but they depend on the startup order of the services on the car so we can't assume them 100% reliably
@@ -157,8 +153,11 @@ public:
     void VideoFocusHappened(bool hasFocus, bool unrequested);
     void AudioFocusHappend(AudioManagerClient::FocusType type);
 
+    void HandlePhoneStatus(IHUConnectionThreadInterface& stream, const HU::PhoneStatus& phoneStatus) override;
+
     std::atomic<bool> connected;
     std::atomic<bool> videoFocus;
+    std::atomic<bool> inCall;
     std::atomic<AudioManagerClient::FocusType> audioFocus;
 };
 
@@ -174,4 +173,6 @@ public:
     virtual bool HasVideoFocus() const override;
     virtual void TakeVideoFocus() override;
     virtual std::string GetLogPath() const override;
+    virtual std::string GetVersion() const override;
+    virtual std::string ChangeParameterConfig(std::string param, std::string value, std::string type) const override;
 };

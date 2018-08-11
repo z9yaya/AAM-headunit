@@ -1,6 +1,10 @@
 TOP = $(realpath ..)
 
-M3TOOLCHAIN=./m3-toolchain
+APPLICATION_NAME=AndroidAuto
+APPLICATION_VERSION=$(shell git describe --tags)
+
+#M3TOOLCHAIN=./m3-toolchain
+M3TOOLCHAIN=/home/khantaena/repo/cmu-opkg/ports/toolchain
 PROTOTOOLCHAIN=./protobuf-2.6.1-arm
 LIBUNWIND=./libunwind-1.2-rc1
 CC=$(M3TOOLCHAIN)/bin/arm-cortexa9_neon-linux-gnueabi-gcc
@@ -38,12 +42,17 @@ SRCS += outputs.cpp
 SRCS += callbacks.cpp
 SRCS += main.cpp
 
+SRCS += $(TOP)/common/config.cpp
+
 OBJS = $(addsuffix .arm.o, $(basename $(SRCS)))
 DEPS = $(addsuffix .arm.d, $(basename $(SRCS)))
 
 APP = headunit
 
-all: proto dbusxx $(APP)
+all: tag proto dbusxx $(APP)
+
+tag:
+	echo "#define HEADUNIT_VERSION \"`git describe --tag`\"" > version.h
 
 proto: $(TOP)/hu/generated.arm/hu.pb.cc
 
@@ -56,7 +65,7 @@ $(TOP)/hu/generated.arm/hu.pb.cc $(TOP)/hu/generated.arm/hu.pb.h: $(TOP)/hu/hu.p
 	$(PROTOTOOLCHAIN)/bin/protoc $< --proto_path=$(TOP)/hu/ --cpp_out=$(TOP)/hu/generated.arm/
 
 dbus/generated_cmu.h: dbus/cmu_interfaces.xml
-	cd dbus ; ./dbusxx-xml2cpp cmu_interfaces.xml --proxy=generated_cmu.h
+	cd dbus ; dbusxx-xml2cpp cmu_interfaces.xml --proxy=generated_cmu.h
 
 %.arm.o : %.c
 	$(CC) -Os -s $(CFLAGS) $(INCLUDES) -c $<  -o $@
@@ -68,10 +77,12 @@ dbus/generated_cmu.h: dbus/cmu_interfaces.xml
 	$(CXX) -Os -s $(CXXFLAGS) $(INCLUDES) -c $<  -o $@
 
 clean:
-	rm -f *~ $(TOP)/hu/generated.arm/* dbus/generated_*.* $(OBJS) $(APP) $(DEPS)
+	rm -f *~ $(TOP)/hu/generated.arm/* dbus/generated_*.* $(OBJS) $(APP) $(DEPS) $(APPLICATION_NAME)_*.zip version.h
 
 install: all
-	cp -a -f headunit installer/config/androidauto/data_persist/dev/bin/
+	cp -a -f headunit installer/config/androidauto/data_persist/dev/bin/; cp -a -f headunit.json installer/config/androidauto/data_persist/dev/bin/
+release: install
+	zip -r -FS $(APPLICATION_NAME)_$(APPLICATION_VERSION).zip installer/
 
 -include $(DEPS)
 

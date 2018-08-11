@@ -426,17 +426,18 @@
       inner->add_keycodes_supported(HUIB_HOME); // 0x03 AA home
       inner->add_keycodes_supported(HUIB_BACK); // 0x04 Back
       inner->add_keycodes_supported(HUIB_PHONE); // 0x05 Phone screen
-      inner->add_keycodes_supported(HUIB_CALLEND); // 0x06 End call??
+      inner->add_keycodes_supported(HUIB_CALLEND); // 0x06 End call
       //inner->add_keycodes_supported(HUIB_NAV); // 0x07 Nav (This one is not correct)
       inner->add_keycodes_supported(HUIB_UP); // 0x13 Up
       inner->add_keycodes_supported(HUIB_DOWN); // 0x14 Down
-      inner->add_keycodes_supported(HUIB_LEFT); // 0x15 Menu again
-      inner->add_keycodes_supported(HUIB_RIGHT); // 0x16 Mic again
+      inner->add_keycodes_supported(HUIB_LEFT); // 0x15 Left/Menu
+      inner->add_keycodes_supported(HUIB_RIGHT); // 0x16 Right/Mic
       inner->add_keycodes_supported(HUIB_ENTER); // 0x17 Select
       inner->add_keycodes_supported(HUIB_MIC); // 0x54 Mic again
       inner->add_keycodes_supported(HUIB_PLAYPAUSE); // 0x55 Play/Pause
       inner->add_keycodes_supported(HUIB_NEXT); // 0x57 Next track
       inner->add_keycodes_supported(HUIB_PREV); // 0x58 Prev Track
+      inner->add_keycodes_supported(HUIB_MUSIC); // 0xD1 Music Screen
       inner->add_keycodes_supported(HUIB_SCROLLWHEEL);
       // Might as well include these even if we dont use them
       inner->add_keycodes_supported(HUIB_START); // 0x7E (126) Start media
@@ -530,7 +531,15 @@
       callbacks.CustomizeInputChannel(AA_CH_MIC, *inner);
     }
 
-    callbacks.CustomizeCarInfo(carInfo);
+    //Doesn't work yet
+    /*
+    HU::ChannelDescriptor* notificationChannel = carInfo.add_channels();
+    notificationChannel->set_channel_id(AA_CH_NOT);
+    {
+      auto inner = notificationChannel->mutable_generic_notification_service();
+      //nothing to set here actually
+    }
+    */
 
     std::string carBTAddress = callbacks.GetCarBluetoothAddress();
     if (carBTAddress.size() > 0)
@@ -541,15 +550,24 @@
         {
           auto inner = btChannel->mutable_bluetooth_service();
           inner->set_car_address(carBTAddress);
-          inner->add_supported_pairing_methods(HU::ChannelDescriptor_BluetoothService::BLUETOOTH_PARING_METHOD_A2DP);
-          inner->add_supported_pairing_methods(HU::ChannelDescriptor_BluetoothService::BLUETOOTH_PARING_METHOD_HFP);
+          inner->add_supported_pairing_methods(HU::BLUETOOTH_PARING_METHOD_A2DP);
+          inner->add_supported_pairing_methods(HU::BLUETOOTH_PARING_METHOD_HFP);
           callbacks.CustomizeBluetoothService(AA_CH_BT, *inner);
+        }
+
+        HU::ChannelDescriptor* phoneStatusChannel = carInfo.add_channels();
+        phoneStatusChannel->set_channel_id(AA_CH_PSTAT);
+        {
+          auto inner = phoneStatusChannel->mutable_phone_status_service();
+          //nothing to set here actually
         }
     }
     else
     {
         logw("No Bluetooth or finding BT address failed. Not exposing Bluetooth service");
     }
+
+    callbacks.CustomizeCarInfo(carInfo);
 
     return hu_aap_enc_send_message(0, chan, HU_PROTOCOL_MESSAGE::ServiceDiscoveryResponse, carInfo);
   }
@@ -805,6 +823,100 @@
     return hu_aap_enc_send_message(0, chan, HU_MEDIA_CHANNEL_MESSAGE::MediaAck, mediaAck);
   }
 
+  int HUServer::hu_handle_PhoneStatus(int chan, byte * buf, int len) {
+      HU::PhoneStatus request;
+      if (!request.ParseFromArray(buf, len))
+      {
+        loge ("PhoneStatus Focus Request");
+        return -1;
+      }
+      else
+      {
+        logd ("PhoneStatus Focus Request");
+      }
+      callbacks.HandlePhoneStatus(*this, request);
+      return 0;
+  }
+
+  int HUServer::hu_handle_GenericNotificationResponse(int chan, byte * buf, int len) {
+      HU::GenericNotificationResponse request;
+      if (!request.ParseFromArray(buf, len))
+      {
+        loge ("GenericNotificationResponse Focus Request");
+        return -1;
+      }
+      else
+      {
+        logd ("GenericNotificationResponse Focus Request");
+      }
+      //callbacks.HandleGenericNotificationResponse(*this, request);
+      return 0;
+  }
+
+  int HUServer::hu_handle_StartGenericNotifications(int chan, byte * buf, int len) {
+      HU::StartGenericNotifications request;
+      if (!request.ParseFromArray(buf, len))
+      {
+        loge ("StartGenericNotifications Focus Request");
+        return -1;
+      }
+      else
+      {
+        logd ("StartGenericNotifications Focus Request");
+      }
+      //callbacks.ShowingGenericNotifications(*this, true);
+      return 0;
+  }
+
+  int HUServer::hu_handle_StopGenericNotifications(int chan, byte * buf, int len) {
+      HU::StopGenericNotifications request;
+      if (!request.ParseFromArray(buf, len))
+      {
+        loge ("StopGenericNotifications Focus Request");
+        return -1;
+      }
+      else
+      {
+        logd ("StopGenericNotifications Focus Request");
+      }
+      //callbacks.ShowingGenericNotifications(*this, false);
+      return 0;
+  }
+
+  int HUServer::hu_handle_BluetoothPairingRequest(int chan, byte * buf, int len){
+      HU::BluetoothPairingRequest request;
+      if (!request.ParseFromArray(buf, len))
+      {
+        loge ("BluetoothPairingRequest Focus Request");
+        return -1;
+      }
+      else
+      {
+        logd ("BluetoothPairingRequest Focus Request");
+      }
+      printf("BluetoothPairingRequest: %s\n",request.DebugString().c_str());
+
+      HU::BluetoothPairingResponse response;
+      response.set_already_paired(true);
+      response.set_status(HU::BluetoothPairingResponse::PAIRING_STATUS_1);
+
+      return hu_aap_enc_send_message(0, chan, HU_BLUETOOTH_CHANNEL_MESSAGE::BluetoothPairingResponse, response);
+  }
+
+  int HUServer::hu_handle_BluetoothAuthData(int chan, byte * buf, int len) {
+      HU::BluetoothAuthData request;
+      if (!request.ParseFromArray(buf, len))
+      {
+        loge ("BluetoothAuthData Focus Request");
+        return -1;
+      }
+      else
+      {
+        logd ("BluetoothAuthData Focus Request");
+      }
+      printf("BluetoothAuthData: %s\n",request.DebugString().c_str());
+      return 0;
+  }
 
   int HUServer::iaap_msg_process (int chan, uint16_t msg_type, byte * buf, int len) {
 
@@ -889,7 +1001,42 @@
       }
       else if (chan == AA_CH_BT)
       {
-        logw("BLUETOOTH CHANNEL MESSAGE = chan %d - msg_type: %d", chan, msg_type);
+        switch((HU_BLUETOOTH_CHANNEL_MESSAGE)msg_type)
+        {
+        case HU_BLUETOOTH_CHANNEL_MESSAGE::BluetoothPairingRequest:
+          return hu_handle_BluetoothPairingRequest(chan, buf, len);
+        case HU_BLUETOOTH_CHANNEL_MESSAGE::BluetoothAuthData:
+          return hu_handle_BluetoothAuthData(chan, buf, len);
+        default:
+          logw("BLUETOOTH CHANNEL MESSAGE = chan %d - msg_type: %d", chan, msg_type);
+          return (0);
+        }
+      }
+      else if (chan == AA_CH_PSTAT)
+      {
+          switch((HU_PHONE_STATUS_CHANNEL_MESSAGE)msg_type)
+          {
+            case HU_PHONE_STATUS_CHANNEL_MESSAGE::PhoneStatus:
+              return hu_handle_PhoneStatus(chan, buf, len);
+            default:
+              loge ("Unknown msg_type: %d", msg_type);
+              return (0);
+          }
+      }
+      else if (chan == AA_CH_NOT)
+      {
+          switch((HU_GENERIC_NOTIFICATIONS_CHANNEL_MESSAGE)msg_type)
+          {
+            case HU_GENERIC_NOTIFICATIONS_CHANNEL_MESSAGE::StartGenericNotifications:
+              return hu_handle_StartGenericNotifications(chan, buf, len);
+            case HU_GENERIC_NOTIFICATIONS_CHANNEL_MESSAGE::StopGenericNotifications:
+              return hu_handle_StopGenericNotifications(chan, buf, len);
+            case HU_GENERIC_NOTIFICATIONS_CHANNEL_MESSAGE::GenericNotificationResponse:
+              return hu_handle_GenericNotificationResponse(chan, buf, len);
+            default:
+              loge ("Unknown msg_type: %d", msg_type);
+              return (0);
+          }
       }
       else if (chan == AA_CH_AUD || chan == AA_CH_AU1 || chan == AA_CH_AU2 || chan == AA_CH_VID || chan == AA_CH_MIC)
       {

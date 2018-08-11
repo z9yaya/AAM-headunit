@@ -7,6 +7,7 @@
 #include "command_server.h"
 
 #include <asoundlib.h>
+#include "version.h"
 
 class VideoOutput;
 class AudioOutput;
@@ -34,6 +35,10 @@ public:
         virtual void AudioFocusRequest(int chan, const HU::AudioFocusRequest& request) override;
         virtual void VideoFocusRequest(int chan, const HU::VideoFocusRequest& request) override;
 
+        virtual void HandlePhoneStatus(IHUConnectionThreadInterface& stream, const HU::PhoneStatus& phoneStatus) override;
+        //Doesn't actually work yet
+        //virtual void ShowingGenericNotifications(IHUConnectionThreadInterface& stream, bool bIsShowing) override;
+
         virtual std::string GetCarBluetoothAddress() override;
 
         void VideoFocusHappened(bool hasFocus, VIDEO_FOCUS_REQUESTOR videoFocusRequestor);
@@ -55,4 +60,6 @@ public:
     virtual bool HasVideoFocus() const override;
     virtual void TakeVideoFocus() override;
     virtual std::string GetLogPath() const override;
+    virtual std::string GetVersion() const override;
+    virtual std::string ChangeParameterConfig(std::string param, std::string value, std::string type) const override;
 };

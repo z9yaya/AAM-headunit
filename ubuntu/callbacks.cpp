@@ -2,6 +2,7 @@
 #include "outputs.h"
 #include "glib_utils.h"
 #include "bt/ub_bluetooth.h"
+#include "config.h"
 
 DesktopEventCallbacks::DesktopEventCallbacks() :
     connected(false),
@@ -93,6 +94,16 @@ std::string DesktopEventCallbacks::GetCarBluetoothAddress()
     return get_bluetooth_mac_address();
 }
 
+void DesktopEventCallbacks::HandlePhoneStatus(IHUConnectionThreadInterface& stream, const HU::PhoneStatus& phoneStatus) {
+    printf("HandlePhoneStatus: %s\n", phoneStatus.DebugString().c_str());
+}
+
+/*
+void DesktopEventCallbacks::ShowingGenericNotifications(IHUConnectionThreadInterface& stream, bool bIsShowing) {
+    printf("ShowingGenericNotifications: %s\n", bIsShowing ? "true" : "false");
+}
+*/
+
 void DesktopEventCallbacks::VideoFocusHappened(bool hasFocus, VIDEO_FOCUS_REQUESTOR videoFocusRequestor) {
     run_on_main_thread([this, hasFocus, videoFocusRequestor](){
         if ((bool)videoOutput != hasFocus) {
@@ -154,4 +165,35 @@ std::string DesktopCommandServerCallbacks::GetLogPath() const
 {
     //no log
     return std::string();
+}
+
+std::string DesktopCommandServerCallbacks::GetVersion() const
+{
+    return HEADUNIT_VERSION;
+}
+
+std::string DesktopCommandServerCallbacks::ChangeParameterConfig(std::string param, std::string value, std::string type) const
+{
+    bool updateHappened = false;
+    if (type == "string")
+    {
+        config::updateConfigString(param, value);
+        updateHappened = true;
+    }
+    if (type == "bool")
+    {
+        if (value == "false")
+        {
+            config::updateConfigBool(param, false);
+            updateHappened = true;
+        }
+        if (value == "true")
+        {
+            config::updateConfigBool(param, true);
+            updateHappened = true;
+        }
+    }
+    if (updateHappened)
+       return "Config updated";
+    return "Config wasn't updated. Wrong parameters.";
 }

@@ -1,10 +1,68 @@
 #!/bin/sh
 
-SCRIPT=$(readlink -f "$0")
+DEBUG=0
+
+SCRIPT="/resources/aio/bin/headunit"
 SCRIPTPATH=$(dirname "$SCRIPT")
 
-export LD_LIBRARY_PATH="${SCRIPTPATH}/headunit_libs:/jci/lib:/jci/opera/3rdpartylibs/freetype:/usr/lib/imx-mm/audio-codec:/usr/lib/imx-mm/parser:/data_persist/dev/lib:"
-#override some GST plugins with these
-export GST_PLUGIN_PATH="${SCRIPTPATH}/headunit_libs"
+start_headunit()
+{
+  taskset 0xFFFFFFFF "${SCRIPTPATH}/headunit" "$@" > /tmp/mnt/data/headunit.log 2>&1 &
+}
 
-taskset 0xFFFFFFFF "${SCRIPTPATH}/headunit" "$@" 2>&1 | tee /tmp/mnt/data/headunit.log
+start_AAwireless()
+{
+  taskset 0xFFFFFFFF "${SCRIPTPATH}/headunit-wireless" "$@" > /tmp/mnt/data/headunit.log 2>&1 &
+}
+
+export LD_LIBRARY_PATH="${SCRIPTPATH}/headunit_libs:/jci/lib:/jci/opera/3rdpartylibs/freetype:/usr/lib/imx-mm/audio-codec:/usr/lib/imx-mm/parser:/resources/aio/lib:"
+#override some GST plugins with these
+export GST_PLUGIN_PATH="/resources/aio/lib"
+
+taskset 0xFFFFFFFF "${SCRIPTPATH}/headunit" "$@" 2>&1 >/dev/null &
+sleep 3
+
+while true
+do
+ NET_CHECK=`netstat -rn|awk '$2=="192.168.43.1" {print}'|wc -l|awk '{print $1}'`
+ if [ -e /tmp/root/usb_connect ]; then
+  USBCHECK=1
+ else
+  USBCHECK=0
+ fi
+ 
+ if [ $NET_CHECK == 1 ] && [ $USBCHECK == 0 ]; then
+    [ $DEBUG == 1 ] &&  echo "Start WiFi"  >> /tmp/root/headunit.log   
+    #WIFI=1, USB=0
+    PS=$(/usr/bin/pgrep 'headunit$')
+    [ $DEBUG == 1 ] && echo "n=$NET_CHECK u=$USBCHECK PS=$PS"  >> /tmp/root/headunit.log  
+    if ! [ -z $PS ]; then
+         [ $DEBUG == 1 ] && echo " /usr/bin/killall -9 headunit " >> /tmp/root/headunit.log
+        /usr/bin/killall -9 headunit  >> /tmp/root/headunit.log
+        sleep 1
+    fi
+
+    if [ -z $(/usr/bin/pgrep headunit-w) ]; then
+        #echo "Start WIRELESS"
+        start_AAwireless
+    fi
+ else
+    [ $DEBUG == 1 ] && echo "Start USB"  >> /tmp/root/headunit.log   
+    PS=$(/usr/bin/pgrep headunit-w)
+    [ $DEBUG == 1 ] && echo "n=$NET_CHECK u=$USBCHECK PS=$PS"  >> /tmp/root/headunit.log  
+    if ! [ -z $PS ]; then
+         [ $DEBUG == 1 ] && echo "found USB , kill headunit-wireless"  >> /tmp/root/headunit.log
+        /usr/bin/killall -9 headunit-wireless  >> /tmp/root/headunit.log
+        sleep 1
+    fi
+
+    if [ -z $(/usr/bin/pgrep 'headunit$') ]; then
+        #echo "Start USB"
+        start_headunit
+    fi
+ fi
+
+ RAND=`expr $RANDOM % 10`
+ echo "go sleep $RAND"
+ sleep $RAND
+done

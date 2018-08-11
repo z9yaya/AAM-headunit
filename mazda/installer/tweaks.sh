@@ -148,26 +148,6 @@ modify_cmu_files()
             log_message "autostart entry added to /jci/scripts/stage_wifi.sh ... DONE\n"
         fi
     fi
-	
-	# copy patched asound.conf to solve Bluetooth calling bug
-	SOUND_X=$(grep -c "tel_asymed" /etc/asound.conf)
-	if [ $SOUND_X -eq 2 ]; then
-		log_message "Copy patched asound.conf to fix Bluetooth call bug ... "
-		# first backup
-		if [ ! -e /etc/asound.conf.org ]; then
-			if cp -a /etc/asound.conf /etc/asound.conf.org; then
-				log_message "asound.conf backed up /etc/asound.conf.org ... "
-			else
-				log_message "backup of asound.conf FAILED ... "
-			fi
-		fi
-		if cp -a ${MYDIR}/config/androidauto/etc/asound.conf /etc; then
-			log_message "copied patched asound.conf\n"
-		else
-			log_message "copy patched asound.conf FAILED\n"
-		fi
-		chmod 755 /etc/asound.conf
-	fi
 }
 
 revert_cmu_files()
@@ -226,14 +206,6 @@ revert_cmu_files()
             fi
         fi
     fi
-	if [ -e /etc/asound.conf.org ]; then
-		log_message "Reverting asound.conf ... "
-	    if mv /etc/asound.conf.org /etc/asound.conf; then
-			log_message "OK\n"
-		else
-			log_message "FAILED\n"
-		fi
-	fi
 }
 
 copy_aa_binaries()
@@ -248,6 +220,7 @@ copy_aa_binaries()
     log_message "Changing permissions ... "
     chmod 755 /tmp/mnt/data_persist/dev/bin/headunit || "for headunit failed ... "
     chmod 755 /tmp/mnt/data_persist/dev/bin/headunit-wrapper || "for headunit-wrapper failed ... "
+    chmod 755 /tmp/mnt/data_persist/dev/bin/headunit.json || "for headunit.json failed ... "
     log_message "DONE\n"
 }
 
@@ -257,6 +230,7 @@ remove_aa_binaries()
     log_message "Removing AA files ... "
     rm /tmp/mnt/data_persist/dev/bin/headunit || log_message "headunit failed ... "
     rm /tmp/mnt/data_persist/dev/bin/headunit-wrapper || log_message "headunit-wrapper failed ... "
+    rm /tmp/mnt/data_persist/dev/bin/headunit.json || log_message "headunit.json failed ... "
     rm -rf /tmp/mnt/data_persist/dev/bin/headunit_libs || log_message "headunit_libs failed ... "
     rm -rf /jci/gui/apps/_androidauto || log_message "_androidauto failed ... "
     rm /jci/opera/opera_dir/userjs/additionalApps.* || "additionalApps.* failed ... "
