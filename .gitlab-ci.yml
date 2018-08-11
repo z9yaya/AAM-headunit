@@ -9,3 +9,7 @@ rspec:
     - cd mazda
     - sed -i 's/.\/dbusxx-xml2cpp/dbusxx-xml2cpp/g' Makefile
     - make
+  artifacts:
+    name: "$CI_COMMIT_REF_NAME"
+    untracked: true
+    expire_in: 1 week
