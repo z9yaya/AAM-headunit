@@ -3,8 +3,7 @@ TOP = $(realpath ..)
 APPLICATION_NAME=AndroidAuto
 APPLICATION_VERSION=$(shell git describe --tags)
 
-#M3TOOLCHAIN=./m3-toolchain
-M3TOOLCHAIN=/home/khantaena/repo/cmu-opkg/ports/toolchain
+M3TOOLCHAIN=./m3-toolchain
 PROTOTOOLCHAIN=./protobuf-2.6.1-arm
 LIBUNWIND=./libunwind-1.2-rc1
 CC=$(M3TOOLCHAIN)/bin/arm-cortexa9_neon-linux-gnueabi-gcc
