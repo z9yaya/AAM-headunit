@@ -2,58 +2,66 @@
 
 SCRIPT=$(readlink -f "$0")
 SCRIPTPATH=$(dirname "$SCRIPT")
+DEBUG=0
+
+start_headunit()
+{
+  taskset 0xFFFFFFFF "${SCRIPTPATH}/headunit" "$@" > /tmp/mnt/data/headunit.log 2>&1 &
+}
+
+start_AAwireless()
+{
+  taskset 0xFFFFFFFF "${SCRIPTPATH}/headunit-wireless" "$@" > /tmp/mnt/data/headunit.log 2>&1 &
+}
 
 export LD_LIBRARY_PATH="${SCRIPTPATH}/headunit_libs:/jci/lib:/jci/opera/3rdpartylibs/freetype:/usr/lib/imx-mm/audio-codec:/usr/lib/imx-mm/parser:/data_persist/dev/lib:"
 #override some GST plugins with these
 export GST_PLUGIN_PATH="${SCRIPTPATH}/headunit_libs:/usr/lib/gstreamer-0.10"
 
-conf='{
-    "launchOnDevice": true,
-    "carGPS": true,
-    "wifiTransport": false
-}'
+taskset 0xFFFFFFFF "${SCRIPTPATH}/headunit" "$@" 2>&1 >/dev/null &
+sleep 3
 
-if ! [ -e /tmp/root/headunit.json ]; then
- echo $conf > /tmp/root/headunit.json
-fi
-
-while [ true ]; do
- #Check online
- count=`ip route|grep default|grep wlan0|wc -l`
- if [ $count -ge 1 ]; then
-  touch /tmp/root/online.status
-  stable_count=$(( $stable_count + 1 ))
-  if [ $stable_count -gt $stable_threshold ]; then
-   touch /tmp/root/online-stable.status
-   stable_count=$(( $stable_threshold + 1 ))
-  fi
+while true
+do
+ NET_CHECK=`netstat -rn|awk '$2=="192.168.43.1" {print}'|wc -l|awk '{print $1}'`
+ if [ -e /tmp/root/usb_connect ]; then
+  USBCHECK=1
  else
-  stable_count=0
-  rm -f /tmp/root/online.status
-  rm -f /tmp/root/online-stable.status
+  USBCHECK=0
  fi
- # Check personal hotspot
- android_netcheck=`netstat -rn|awk '$2=="192.168.43.1" {print}'|wc -l`
  
- #AA-Wifi
- if [ -e /tmp/root/online.status ]&&[ $android_netcheck == 1 ]; then
-  if ! [ -e /tmp/root/headunit-wireless.status ]; then
-   sed -i 's."wifiTransport": false."wifiTransport": true.g' /tmp/root/headunit.json 
-   taskset 0xFFFFFFFF "${SCRIPTPATH}/headunit" "$@" 2>&1 | tee /tmp/mnt/data/headunit.log
-   touch /tmp/root/headunit-wireless.status
-   rm -f  /tmp/root/headunit.status
-   echo "First start"
-  fi
- else ## AA-USB
-  killall headunit ||true
-  if ! [ -e /tmp/root/headunit.status ]; then
-   sed -i 's."wifiTransport": true."wifiTransport": false.g' /tmp/root/headunit.json 
-   taskset 0xFFFFFFFF "${SCRIPTPATH}/headunit" "$@" 2>&1 | tee /tmp/mnt/data/headunit.log
-   touch /tmp/root/headunit.status
-   rm -f /tmp/root/headunit-wireless.status
-  fi
+ if [ $NET_CHECK == 1 ] && [ $USBCHECK == 0 ]; then
+    [ $DEBUG == 1 ] &&  echo "Start WiFi"  >> /tmp/root/headunit.log   
+    #WIFI=1, USB=0
+    PS=$(/usr/bin/pgrep 'headunit$')
+    [ $DEBUG == 1 ] && echo "n=$NET_CHECK u=$USBCHECK PS=$PS"  >> /tmp/root/headunit.log  
+    if ! [ -z $PS ]; then
+         [ $DEBUG == 1 ] && echo " /usr/bin/killall -9 headunit " >> /tmp/root/headunit.log
+        /usr/bin/killall -9 headunit  >> /tmp/root/headunit.log
+        sleep 1
+    fi
+
+    if [ -z $(/usr/bin/pgrep headunit-w) ]; then
+        #echo "Start WIRELESS"
+        start_AAwireless
+    fi
+ else
+    [ $DEBUG == 1 ] && echo "Start USB"  >> /tmp/root/headunit.log   
+    PS=$(/usr/bin/pgrep headunit-w)
+    [ $DEBUG == 1 ] && echo "n=$NET_CHECK u=$USBCHECK PS=$PS"  >> /tmp/root/headunit.log  
+    if ! [ -z $PS ]; then
+         [ $DEBUG == 1 ] && echo "found USB , kill headunit-wireless"  >> /tmp/root/headunit.log
+        /usr/bin/killall -9 headunit-wireless  >> /tmp/root/headunit.log
+        sleep 1
+    fi
+
+    if [ -z $(/usr/bin/pgrep 'headunit$') ]; then
+        #echo "Start USB"
+        start_headunit
+    fi
  fi
- RAND=`expr $RANDOM % 5`
+
+ RAND=`expr $RANDOM % 10`
  echo "go sleep $RAND"
  sleep $RAND
 done

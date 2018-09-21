@@ -42,6 +42,8 @@ SRCS += $(TOP)/common/config.cpp
 SRCS += callbacks.cpp
 SRCS += main.cpp
 
+SRCS += $(TOP)/common/config.cpp
+
 OBJS = $(addsuffix .arm.o, $(basename $(SRCS)))
 DEPS = $(addsuffix .arm.d, $(basename $(SRCS)))
 
@@ -75,7 +77,7 @@ dbus/generated_cmu.h: dbus/cmu_interfaces.xml
 	$(CXX) -MD -g $(CXXFLAGS) $(INCLUDES) -c $<  -o $@
 
 clean:
-	rm -f *~ $(TOP)/hu/generated.arm/* dbus/generated_*.* $(OBJS) $(APP) $(DEPS) $(APPLICATION_NAME)_*.zip
+	rm -f *~ $(TOP)/hu/generated.arm/* dbus/generated_*.* $(OBJS) $(APP) $(DEPS) $(APPLICATION_NAME)_*.zip version.h
 
 install: all
 	cp -a -f headunit installer/config/androidauto/data_persist/dev/bin/; cp -a -f headunit.json installer/config/androidauto/data_persist/dev/bin/
