@@ -1,1 +1,0 @@
-#define HEADUNIT_VERSION "v1.05-46-g95f1a2d"

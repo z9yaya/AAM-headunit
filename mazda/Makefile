@@ -28,6 +28,7 @@ SRCS += $(TOP)/hu/hu_uti.cpp
 SRCS += $(TOP)/hu/hu_tcp.cpp
 SRCS += $(TOP)/hu/generated.arm/hu.pb.cc
 
+
 SRCS += $(TOP)/common/audio.cpp
 SRCS += $(TOP)/common/glib_utils.cpp
 SRCS += $(TOP)/common/command_server.cpp
@@ -37,12 +38,13 @@ SRCS += nm/mzd_nightmode.cpp
 SRCS += gps/mzd_gps.cpp
 SRCS += bt/mzd_bluetooth.cpp
 
+SRCS += hud/hud.cpp
+
 SRCS += outputs.cpp
 SRCS += $(TOP)/common/config.cpp
 SRCS += callbacks.cpp
-SRCS += main.cpp
 
-SRCS += $(TOP)/common/config.cpp
+SRCS += main.cpp
 
 OBJS = $(addsuffix .arm.o, $(basename $(SRCS)))
 DEPS = $(addsuffix .arm.d, $(basename $(SRCS)))

@@ -2,7 +2,10 @@
 
 #sleep 20
 
-LIST="/tmp/mnt/data_persist/dev/bin/usb-allow.list"
+LIST="/resources/aio/misc/usb-allow.list"
+if ! [ -e $LIST ]; then
+  LIST="/tmp/mnt/data_persist/dev/bin/usb-allow.list"
+fi
 
 while [ true ]; do
 while IFS='' read -r line || [[ -n "$line" ]]; do

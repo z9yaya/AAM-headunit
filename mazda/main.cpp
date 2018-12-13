@@ -26,6 +26,7 @@
 
 #include "nm/mzd_nightmode.h"
 #include "gps/mzd_gps.h"
+#include "hud/hud.h"
 
 #include "audio.h"
 #include "main.h"
@@ -125,7 +126,7 @@ static void gps_thread_func(std::condition_variable& quitcv, std::mutex& quitmut
                 location->set_latitude(static_cast<int32_t>(data.latitude * 1E7));
                 location->set_longitude(static_cast<int32_t>(data.longitude * 1E7));
 
-                // If the sd card exists then reverse heading. This should only be used on installs that have the 
+                // If the sd card exists then reverse heading. This should only be used on installs that have the
                 // reversed heading issue.
                 double newHeading = data.heading;
 
@@ -134,7 +135,7 @@ static void gps_thread_func(std::condition_variable& quitcv, std::mutex& quitmut
                     const char* sdCardFolder;
                     sdCardFolder = SD_CARD_PATH;
                     struct stat sb;
-    
+
                     if (stat(sdCardFolder, &sb) == 0 && S_ISDIR(sb.st_mode))
                     {
                         newHeading = data.heading + 180;
@@ -143,7 +144,7 @@ static void gps_thread_func(std::condition_variable& quitcv, std::mutex& quitmut
                             newHeading = newHeading - 360;
                         }
                     }
-				}
+                }
 
                 location->set_bearing(static_cast<int32_t>(newHeading * 1E6));
                 //assuming these are the same units as the Android Location API (the rest are)
@@ -209,7 +210,6 @@ int main (int argc, char *argv[])
         }
 
         config::readConfig();
-
         printf("Looping\n");
         while (true)
         {
@@ -229,6 +229,8 @@ int main (int argc, char *argv[])
             DBus::Connection serviceBus(SERVICE_BUS_ADDRESS, false);
             serviceBus.register_bus();
 
+            hud_start();
+
             MazdaEventCallbacks callbacks(serviceBus, hmiBus);
             HUServer headunit(callbacks);
             g_hu = &headunit.GetAnyThreadInterface();
@@ -246,9 +248,11 @@ int main (int argc, char *argv[])
 
             std::condition_variable quitcv;
             std::mutex quitmutex;
+            std::mutex hudmutex;
 
             std::thread nm_thread([&quitcv, &quitmutex](){ nightmode_thread_func(quitcv, quitmutex); } );
             std::thread gp_thread([&quitcv, &quitmutex](){ gps_thread_func(quitcv, quitmutex); } );
+            std::thread hud_thread([&quitcv, &quitmutex, &hudmutex](){ hud_thread_func(quitcv, quitmutex, hudmutex); } );
 
             /* Start gstreamer pipeline and main loop */
 
@@ -272,6 +276,9 @@ int main (int argc, char *argv[])
 
             printf("waiting for gps_thread\n");
             gp_thread.join();
+
+            printf("waiting for hud_thread\n");
+            hud_thread.join();
 
             printf("shutting down\n");
 
