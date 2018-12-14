@@ -328,26 +328,29 @@ void VideoOutput::input_thread_func()
                         { // This is just for testing although it may be a useful feature if we polish it a little
                             fprintf(stderr, "EVIOCGRAB failed to ungrab %s\n", EVENT_DEVICE_KBD);
                         }
-						            else
+                        else
 #endif
-						            if (!callbacks->inCall && isPressed)
+                        if (!callbacks->inCall && isPressed)
                         {	//go back to home screen
                             callbacks->releaseVideoFocus();
-						            }
-						            else
-					            	{	// we can do this since this button does nothing when not on a call
-						           	    scanCode = HUIB_CALLEND;
+                        }
+                        else
+                        {	// we can do this since this button does nothing when not on a call
+                            scanCode = HUIB_CALLEND;
                         }
                         break;
                     case KEY_T: // FAV
-                        printf("KEY_T (any audio focus: %i media focus: %i)\n", int(audioFocus), hasMediaAudioFocus ? 1 : 0);
-                        if (!hasAudioFocus)
-                        {	// if we don't have audio focus takes focus by playing music
-                           scanCode = HUIB_START;
-                        }
-                        else if (hasAudioFocus && !isPressed)
+                        printf("KEY_T (any audio focus: %i media focus: %i)\n", hasAudioFocus, hasMediaAudioFocus ? 1 : 0);
+                        if (hasMediaAudioFocus)
                         {	//do it on release to avoid key bounce/repeat
-                            callbacks->releaseAudioFocus(); //This will also pause audio automatically in AA
+                            if(!isPressed)
+                            {
+                                callbacks->releaseAudioFocus(); //This will also pause audio automatically in AA
+                            }
+                        }
+                        else
+                        {	// if we don't have audio focus take focus by playing music
+                           scanCode = HUIB_PLAYPAUSE;
                         }
                         break;
                     }
