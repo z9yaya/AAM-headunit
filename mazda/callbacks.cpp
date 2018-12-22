@@ -95,7 +95,7 @@ void MazdaEventCallbacks::AudioFocusRequest(int chan, const HU::AudioFocusReques
             audioMgrClient->audioMgrReleaseAudioFocus();
         } else {
             if (!inCall) {
-                if (request.focus_type() == HU::AudioFocusRequest::AUDIO_FOCUS_GAIN_TRANSIENT || request.focus_type() == HU::AudioFocusRequest::AUDIO_FOCUS_GAIN_NAVI) {
+                if (request.focus_type() == HU::AudioFocusRequest::AUDIO_FOCUS_GAIN_TRANSIENT) { // || request.focus_type() == HU::AudioFocusRequest::AUDIO_FOCUS_GAIN_NAVI) {
                     audioMgrClient->audioMgrRequestAudioFocus(AudioManagerClient::FocusType::TRANSIENT); //assume media
                 } else if (request.focus_type() == HU::AudioFocusRequest::AUDIO_FOCUS_GAIN) {
                     audioMgrClient->audioMgrRequestAudioFocus(AudioManagerClient::FocusType::PERMANENT); //assume media
@@ -396,7 +396,7 @@ void AudioManagerClient::aaRegisterStream()
         }
 
         // Stream is registered add it to the array
-        streamToSessionIds[aaStreamName] = aaSessionID;
+        streamToSessionIds[aaStreamName] = aaTransientSessionID;
     }
 
 

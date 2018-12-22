@@ -35,12 +35,6 @@
 #include "glib_utils.h"
 #include "config.h"
 
-#include "json/json.hpp"
-#include "config.h"
-
-using json = nlohmann::json;
-
-
 #define HMI_BUS_ADDRESS "unix:path=/tmp/dbus_hmi_socket"
 #define SERVICE_BUS_ADDRESS "unix:path=/tmp/dbus_service_socket"
 // Check the content folder. sd_nav still exists without the card installed
