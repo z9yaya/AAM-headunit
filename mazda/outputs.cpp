@@ -466,9 +466,12 @@ VideoOutput::VideoOutput(MazdaEventCallbacks* callbacks)
     input_thread_quit_pipe_write = quitpiperw[1];
 
     input_thread = std::thread([this](){ input_thread_func(); } );
-
+    //Drop caches before staing new video
+    sync();
+    std::ofstream ofs("/proc/sys/vm/drop_caches");
+    ofs << "3" << std::endl;
     //if we have ASPECT_RATIO_FIX, cut off the bottom black bar
-    const char* vid_pipeline_launch = "appsrc name=mysrc is-live=true block=false max-latency=1000000 do-timestamp=true ! queue ! h264parse ! vpudec low-latency=true framedrop=true framedrop-level-mask=0x200 ! mfw_isink name=mysink "
+    const char* vid_pipeline_launch = "appsrc name=mysrc is-live=true block=false max-latency=1000000 do-timestamp=true ! queue ! h264parse ! vpudec low-latency=true framedrop=true framedrop-level-mask=0x200 frame-plus=1 ! mfw_isink name=mysink "
     #if ASPECT_RATIO_FIX
     "axis-left=0 axis-top=-20 disp-width=800 disp-height=520"
     #else
