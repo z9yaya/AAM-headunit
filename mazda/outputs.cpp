@@ -235,8 +235,10 @@ void VideoOutput::input_thread_func()
                     uint32_t scanCode = 0;
                     int32_t scrollAmount = 0;
                     bool isPressed = (event.value == 1);
+                    bool longPress = false;
                     AudioManagerClient::FocusType audioFocus = callbacks->audioFocus;
                     bool hasMediaAudioFocus = audioFocus == AudioManagerClient::FocusType::PERMANENT;
+                    bool hasAudioFocus = audioFocus != AudioManagerClient::FocusType::NONE;
 
                     //printf("Key code %i value %i\n", (int)event.code, (int)event.value);
                     switch (event.code)
@@ -248,28 +250,28 @@ void VideoOutput::input_thread_func()
                     //Make the music button play/pause
                     case KEY_E:
                         printf("KEY_E\n");
-                        scanCode = HUIB_PLAYPAUSE;
+                        scanCode = HUIB_MUSIC;
                         break;
                     case KEY_LEFTBRACE:
                         printf("KEY_LEFTBRACE (next track with media focus: %i)\n",  hasMediaAudioFocus ? 1 : 0);
                         if(hasMediaAudioFocus)
                         {
-                          scanCode = HUIB_NEXT;
+                            scanCode = HUIB_NEXT;
                         }
                         else
                         {
-                          pass_key_to_mzd(event.type, event.code, event.value);
+                            pass_key_to_mzd(event.type, event.code, event.value);
                         }
                         break;
                     case KEY_RIGHTBRACE:
                         printf("KEY_RIGHTBRACE (prev track with media focus: %i)\n",  hasMediaAudioFocus ? 1 : 0);
                         if(hasMediaAudioFocus)
                         {
-                          scanCode = HUIB_PREV;
+                            scanCode = HUIB_PREV;
                         }
                         else
                         {
-                          pass_key_to_mzd(event.type, event.code, event.value);
+                            pass_key_to_mzd(event.type, event.code, event.value);
                         }
                         break;
                     case KEY_BACKSPACE:
@@ -310,14 +312,11 @@ void VideoOutput::input_thread_func()
                         break;
                     case KEY_HOME:
                         printf("KEY_HOME\n");
-                        if (isPressed) {
-                            //go back to home screen
-                            callbacks->releaseVideoFocus();
-                        }
+                        scanCode = HUIB_HOME;
                         break;
                     case KEY_R: // NAV
                         printf("KEY_R\n");
-                        scanCode = HUIB_HOME;
+                        scanCode = HUIB_NAVIGATION;
                         break;
                     case KEY_Z: // CALL ANS
                         printf("KEY_Z\n");
@@ -328,38 +327,41 @@ void VideoOutput::input_thread_func()
 #ifdef IOGRAB_DEBUG
                         if(hasMediaAudioFocus && isPressed && ioctl(kbd_fd, EVIOCGRAB, 0) < 0)
                         { // This is just for testing although it may be a useful feature if we polish it a little
-                          fprintf(stderr, "EVIOCGRAB failed to ungrab %s\n", EVENT_DEVICE_KBD);
+                            fprintf(stderr, "EVIOCGRAB failed to ungrab %s\n", EVENT_DEVICE_KBD);
                         }
                         else
 #endif
-                        { // we can do this since this button does nothing when not on a call
-                          scanCode = HUIB_CALLEND;
+                        if (!callbacks->inCall && isPressed)
+                        {	//go back to home screen
+                            callbacks->releaseVideoFocus();
+                        }
+                        else
+                        {	// we can do this since this button does nothing when not on a call
+                            scanCode = HUIB_CALLEND;
                         }
                         break;
                     case KEY_T: // FAV
-                        printf("KEY_T (any audio focus: %i media focus: %i)\n", int(audioFocus), hasMediaAudioFocus ? 1 : 0);
-                        if (audioFocus != AudioManagerClient::FocusType::NONE)
+                        printf("KEY_T (any audio focus: %i media focus: %i is pressed: %i)\n", hasAudioFocus, hasMediaAudioFocus ? 1 : 0, isPressed ? 1 : 0);
+                        if(isPressed)
                         {
-                            if (isPressed)
-                            {
-
+                            if (hasAudioFocus)
+                            {	// avoid key bounce/repeat by only capturing on key press
+                                callbacks->releaseAudioFocus(); //This will also pause audio automatically in AA
                             }
                             else
-                            {
-                              //do it on release to avoid key bounce/repeat
-                              callbacks->releaseAudioFocus(); //This will also pause audio automatically in AA
+                            {	// if we don't have audio focus take focus by playing music
+                                scanCode = HUIB_PLAYPAUSE;
                             }
                         }
-                        else
-                        {
-                            // Opens the music screen
-                            scanCode = HUIB_MUSIC;
+                        else if(hasMediaAudioFocus)
+                        {	// This will be the release when audio focus is taken
+                            scanCode = HUIB_PLAYPAUSE;
                         }
                         break;
                     }
                     if (scanCode != 0 || scrollAmount != 0)
                     {
-                        g_hu->hu_queue_command([timeStamp, scanCode, scrollAmount, isPressed](IHUConnectionThreadInterface& s)
+                        g_hu->hu_queue_command([timeStamp, scanCode, scrollAmount, isPressed, longPress](IHUConnectionThreadInterface& s)
                         {
                             HU::InputEvent inputEvent;
                             inputEvent.set_timestamp(timeStamp);
@@ -368,7 +370,7 @@ void VideoOutput::input_thread_func()
                                 HU::ButtonInfo* buttonInfo = inputEvent.mutable_button()->add_button();
                                 buttonInfo->set_is_pressed(isPressed);
                                 buttonInfo->set_meta(0);
-                                buttonInfo->set_long_press(false);
+                                buttonInfo->set_long_press(longPress);
                                 buttonInfo->set_scan_code(scanCode);
                             }
                             if (scrollAmount != 0)
@@ -464,9 +466,12 @@ VideoOutput::VideoOutput(MazdaEventCallbacks* callbacks)
     input_thread_quit_pipe_write = quitpiperw[1];
 
     input_thread = std::thread([this](){ input_thread_func(); } );
-
+    //Drop caches before staing new video
+    sync();
+    std::ofstream ofs("/proc/sys/vm/drop_caches");
+    ofs << "3" << std::endl;
     //if we have ASPECT_RATIO_FIX, cut off the bottom black bar
-    const char* vid_pipeline_launch = "appsrc name=mysrc is-live=true block=false max-latency=1000000 do-timestamp=true ! queue ! h264parse ! vpudec low-latency=true framedrop=true framedrop-level-mask=0x200 ! mfw_isink name=mysink "
+    const char* vid_pipeline_launch = "appsrc name=mysrc is-live=true block=false max-latency=1000000 do-timestamp=true ! queue ! h264parse ! vpudec low-latency=true framedrop=true framedrop-level-mask=0x200 frame-plus=1 ! mfw_isink name=mysink "
     #if ASPECT_RATIO_FIX
     "axis-left=0 axis-top=-20 disp-width=800 disp-height=520"
     #else

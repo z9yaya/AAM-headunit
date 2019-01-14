@@ -4,6 +4,8 @@
 #include "audio.h"
 #include "main.h"
 #include "bt/mzd_bluetooth.h"
+#include "hud/hud.h"
+#include "config.h"
 
 #include "json/json.hpp"
 using json = nlohmann::json;
@@ -93,7 +95,7 @@ void MazdaEventCallbacks::AudioFocusRequest(int chan, const HU::AudioFocusReques
             audioMgrClient->audioMgrReleaseAudioFocus();
         } else {
             if (!inCall) {
-                if (request.focus_type() == HU::AudioFocusRequest::AUDIO_FOCUS_GAIN_TRANSIENT || request.focus_type() == HU::AudioFocusRequest::AUDIO_FOCUS_GAIN_NAVI) {
+                if (request.focus_type() == HU::AudioFocusRequest::AUDIO_FOCUS_GAIN_TRANSIENT) { // || request.focus_type() == HU::AudioFocusRequest::AUDIO_FOCUS_GAIN_NAVI) {
                     audioMgrClient->audioMgrRequestAudioFocus(AudioManagerClient::FocusType::TRANSIENT); //assume media
                 } else if (request.focus_type() == HU::AudioFocusRequest::AUDIO_FOCUS_GAIN) {
                     audioMgrClient->audioMgrRequestAudioFocus(AudioManagerClient::FocusType::PERMANENT); //assume media
@@ -294,6 +296,37 @@ std::string MazdaCommandServerCallbacks::GetLogPath() const
     return "/tmp/mnt/data/headunit.log";
 }
 
+std::string MazdaCommandServerCallbacks::GetVersion() const
+{
+    return HEADUNIT_VERSION;
+}
+
+std::string MazdaCommandServerCallbacks::ChangeParameterConfig(std::string param, std::string value, std::string type) const
+{
+    bool updateHappened = false;
+    if (type == "string")
+    {
+        config::updateConfigString(param, value);
+        updateHappened = true;
+    }
+    if (type == "bool")
+    {
+        if (value == "false")
+        {
+            config::updateConfigBool(param, false);
+            updateHappened = true;
+        }
+        if (value == "true")
+        {
+            config::updateConfigBool(param, true);
+            updateHappened = true;
+        }
+    }
+    if (updateHappened)
+       return "Config updated";
+    return "Config wasn't updated. Wrong parameters.";
+}
+
 void AudioManagerClient::aaRegisterStream()
 {
     // First open a new Stream
@@ -314,7 +347,7 @@ void AudioManagerClient::aaRegisterStream()
             json regArgs = {
                 { "sessionId", aaSessionID },
                 { "streamName", aaStreamName },
-                //{ "streamModeName", aaStreamName },
+                // { "streamModeName", aaStreamName },
                 { "focusType", "permanent" },
                 { "streamType", "Media" }
             };
@@ -346,7 +379,7 @@ void AudioManagerClient::aaRegisterStream()
             json regArgs = {
                 { "sessionId", aaTransientSessionID },
                 { "streamName", aaStreamName },
-                //{ "streamModeName", aaStreamName },
+                // { "streamModeName", aaStreamName },
                 { "focusType", "transient" },
                 { "streamType", "InfoUser" }
             };
@@ -363,7 +396,7 @@ void AudioManagerClient::aaRegisterStream()
         }
 
         // Stream is registered add it to the array
-        streamToSessionIds[aaStreamName] = aaSessionID;
+        streamToSessionIds[aaStreamName] = aaTransientSessionID;
     }
 
 
@@ -484,7 +517,6 @@ void AudioManagerClient::audioMgrRequestAudioFocus(FocusType type)
         audioMgrReleaseAudioFocus();
         return;
     }
-
     printf("audioMgrRequestAudioFocus(%i)\n", int(type));
     if (currentFocus == type)
     {
@@ -509,7 +541,7 @@ void AudioManagerClient::audioMgrReleaseAudioFocus()
     {
         //nothing to do
         callbacks.AudioFocusHappend(currentFocus);
-    }    
+    }
     else if (currentFocus == FocusType::PERMANENT && previousSessionID >= 0)
     {
         //We released the last one, give up audio focus for real
@@ -555,7 +587,7 @@ void AudioManagerClient::Notify(const std::string &signalName, const std::string
                 {
                     eventSessionID = aaTransientSessionID;
                 }
-                logd("Found audio sessionId %i for stream %s\n", aaSessionID, streamName.c_str());
+                logd("Found audio sessionId %i for stream %s\n", eventSessionID, streamName.c_str());
             }
             else
             {
@@ -563,7 +595,7 @@ void AudioManagerClient::Notify(const std::string &signalName, const std::string
                 if (findIt != streamToSessionIds.end())
                 {
                     eventSessionID = findIt->second;
-                    logd("Found audio sessionId %i for stream %s\n", eventSessionID, streamName.c_str());
+                    logd("Found audio sessionId %i for stream %s with focusType %s & newFocus %s\n", eventSessionID, streamName.c_str(), focusType.c_str(), newFocus.c_str());
                 }
                 else
                 {
@@ -617,4 +649,63 @@ void AudioManagerClient::Notify(const std::string &signalName, const std::string
     }
 }
 
+void MazdaEventCallbacks::HandleNaviStatus(IHUConnectionThreadInterface& stream, const HU::NAVMessagesStatus &request){
+}
 
+extern NaviData *navi_data;
+extern std::mutex hudmutex;
+
+void MazdaEventCallbacks::HandleNaviTurn(IHUConnectionThreadInterface& stream, const HU::NAVTurnMessage &request){
+  hudmutex.lock();
+  int changed = 0;
+  if(navi_data->event_name != request.event_name()){
+    navi_data->event_name = request.event_name();
+    changed = 1;
+  }
+  if(navi_data->turn_event != request.turn_event()){
+    navi_data->turn_event = request.turn_event();
+    changed = 1;
+  }
+  if(navi_data->turn_side != request.turn_side()){
+    navi_data->turn_side = request.turn_side();
+    changed = 1;
+  }
+  if(navi_data->turn_number != request.turn_number()){
+    navi_data->turn_number = request.turn_number();
+    changed = 1;
+  }
+  if(navi_data->turn_angle != request.turn_angle()){
+    navi_data->turn_angle = request.turn_angle();
+    changed = 1;
+  }
+  if(changed){
+    navi_data->changed = 1;
+    navi_data->previous_msg = navi_data->previous_msg+1;
+    if(navi_data->previous_msg == 8){
+      navi_data->previous_msg = 1;
+    }
+  }
+  hudmutex.unlock();
+}
+
+void MazdaEventCallbacks::HandleNaviTurnDistance(IHUConnectionThreadInterface& stream, const HU::NAVDistanceMessage &request){
+  hudmutex.lock();
+  if(request.distance() > 1000){
+    int now_distance = request.distance()/100;
+    if(now_distance != navi_data->distance){
+      navi_data->distance_unit = 3;
+      navi_data->distance = now_distance;
+      navi_data->changed = 1;
+    }
+  }
+  else{
+    int now_distance = (((request.distance() + 5) / 10)*10)*10;
+    if(now_distance != navi_data->distance){
+      navi_data->distance_unit = 1;
+      navi_data->distance = now_distance;
+      navi_data->changed = 1;
+    }
+  }
+  navi_data->time_until = request.time_until();
+  hudmutex.unlock();
+}

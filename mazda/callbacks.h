@@ -10,6 +10,7 @@
 #include <asoundlib.h>
 
 #include "dbus/generated_cmu.h"
+#include "version.h"
 
 class VideoOutput;
 class AudioOutput;
@@ -118,6 +119,8 @@ public:
     virtual void DisplayMode(const uint32_t& currentDisplayMode) override;
     virtual void ReverseStatusChanged(const int32_t& reverseStatus) override {}
     virtual void PSMInstallStatusChanged(const uint8_t& psmInstalled) override {}
+    virtual void CameraType(const uint32_t& currentCameraType) override {}
+    virtual void SteeringWheelLocation(const uint32_t& currentSteeringWheelLocation) override {}
 };
 
 class MazdaEventCallbacks : public IHUConnectionThreadEventCallbacks {
@@ -158,6 +161,10 @@ public:
     std::atomic<bool> videoFocus;
     std::atomic<bool> inCall;
     std::atomic<AudioManagerClient::FocusType> audioFocus;
+
+    virtual void HandleNaviStatus(IHUConnectionThreadInterface& stream, const HU::NAVMessagesStatus &request) override;
+    virtual void HandleNaviTurn(IHUConnectionThreadInterface& stream, const HU::NAVTurnMessage &request) override;
+    virtual void HandleNaviTurnDistance(IHUConnectionThreadInterface& stream, const HU::NAVDistanceMessage &request) override;
 };
 
 class MazdaCommandServerCallbacks : public ICommandServerCallbacks
@@ -172,4 +179,6 @@ public:
     virtual bool HasVideoFocus() const override;
     virtual void TakeVideoFocus() override;
     virtual std::string GetLogPath() const override;
+    virtual std::string GetVersion() const override;
+    virtual std::string ChangeParameterConfig(std::string param, std::string value, std::string type) const override;
 };

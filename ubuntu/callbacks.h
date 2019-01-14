@@ -7,6 +7,7 @@
 #include "command_server.h"
 
 #include <asoundlib.h>
+#include "version.h"
 
 class VideoOutput;
 class AudioOutput;
@@ -45,6 +46,10 @@ public:
         std::atomic<bool> connected;
         std::atomic<bool> videoFocus;
         std::atomic<bool> audioFocus;
+        
+        virtual void HandleNaviStatus(IHUConnectionThreadInterface& stream, const HU::NAVMessagesStatus &request) override;
+        virtual void HandleNaviTurn(IHUConnectionThreadInterface& stream, const HU::NAVTurnMessage &request) override;
+        virtual void HandleNaviTurnDistance(IHUConnectionThreadInterface& stream, const HU::NAVDistanceMessage &request) override;
 };
 
 class DesktopCommandServerCallbacks : public ICommandServerCallbacks
@@ -59,4 +64,6 @@ public:
     virtual bool HasVideoFocus() const override;
     virtual void TakeVideoFocus() override;
     virtual std::string GetLogPath() const override;
+    virtual std::string GetVersion() const override;
+    virtual std::string ChangeParameterConfig(std::string param, std::string value, std::string type) const override;
 };

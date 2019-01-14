@@ -22,6 +22,7 @@ SRCS += bt/ub_bluetooth.cpp
 SRCS += main.cpp
 SRCS += outputs.cpp
 SRCS += callbacks.cpp
+SRCS += $(TOP)/common/config.cpp
 
 OBJS = $(addsuffix .x64.o, $(basename $(SRCS)))
 DEPS = $(addsuffix .x64.d, $(basename $(SRCS)))
@@ -29,7 +30,10 @@ APP = headunit
 
 .PHONY: clean
 
-all: proto $(APP)
+all: tag proto $(APP)
+
+tag:
+	echo "#define HEADUNIT_VERSION \"`git describe --tag`\"" > version.h
 
 proto: $(TOP)/hu/generated.x64/hu.pb.cc
 
@@ -49,7 +53,7 @@ $(TOP)/hu/generated.x64/hu.pb.cc $(TOP)/hu/generated.x64/hu.pb.h: $(TOP)/hu/hu.p
 	$(CXX) -MD $(CXXFLAGS) $(INCLUDES) -c $<  -o $@
 
 clean:
-	rm -f $(TOP)/hu/generated.x64/* $(OBJS) $(DEPS) *~ $(APP)
+	rm -f $(TOP)/hu/generated.x64/* $(OBJS) $(DEPS) *~ $(APP) version.h
 
 -include $(DEPS)
 

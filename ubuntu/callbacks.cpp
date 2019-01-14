@@ -2,6 +2,7 @@
 #include "outputs.h"
 #include "glib_utils.h"
 #include "bt/ub_bluetooth.h"
+#include "config.h"
 
 DesktopEventCallbacks::DesktopEventCallbacks() :
     connected(false),
@@ -164,4 +165,49 @@ std::string DesktopCommandServerCallbacks::GetLogPath() const
 {
     //no log
     return std::string();
+}
+
+std::string DesktopCommandServerCallbacks::GetVersion() const
+{
+    return HEADUNIT_VERSION;
+}
+
+std::string DesktopCommandServerCallbacks::ChangeParameterConfig(std::string param, std::string value, std::string type) const
+{
+    bool updateHappened = false;
+    if (type == "string")
+    {
+        config::updateConfigString(param, value);
+        updateHappened = true;
+    }
+    if (type == "bool")
+    {
+        if (value == "false")
+        {
+            config::updateConfigBool(param, false);
+            updateHappened = true;
+        }
+        if (value == "true")
+        {
+            config::updateConfigBool(param, true);
+            updateHappened = true;
+        }
+    }
+    if (updateHappened)
+       return "Config updated";
+    return "Config wasn't updated. Wrong parameters.";
+}
+
+void DesktopEventCallbacks::HandleNaviStatus(IHUConnectionThreadInterface& stream, const HU::NAVMessagesStatus &request){
+}
+
+void DesktopEventCallbacks::HandleNaviTurn(IHUConnectionThreadInterface& stream, const HU::NAVTurnMessage &request){
+    const char *event_name = &request.event_name()[0];
+    std::string image = request.image();
+    printf(event_name);
+    logv ("AA_CH_NAVI: %s, TurnSide: %d, TurnEvent:%d, TurnNumber: %d, TurnAngle: %d", event_name, request.turn_side(), request.turn_event(), request.turn_number(), request.turn_angle());
+    hex_dump("AA_CH_NAVI", 256, (unsigned char*)image.c_str(), image.length());
+}
+void DesktopEventCallbacks::HandleNaviTurnDistance(IHUConnectionThreadInterface& stream, const HU::NAVDistanceMessage &request){
+    logv ("AA_CH_NAVI: Distance: %d", request.distance());
 }
