@@ -31,12 +31,17 @@ start_AAwireless()
 {
     rm -f /tmp/root/headunit.status
     sed -i 's."wifiTransport": false."wifiTransport": true.g' /tmp/root/headunit.json
+    PHONE_IP_ADDRESS=$1
+    shift
+    if [ ! -z $PHONE_IP_ADDRESS ]; then
+        sed -i ﻿"s/\"phoneIpAddress\": \".[^\"]*\"/\"phoneIpAddress\": \"$PHONE_IP_ADDRESS\"/g" /tmp/root/headunit.json
+    fi
     taskset 0xFFFFFFFF "${SCRIPTPATH}/headunit" "$@" > /dev/null 2>&1 &
     sleep 2
     touch /tmp/root/headunit-wireless.status
-   [ $DEBUG -eq 1 ] && echo "=== headunit-wifi ==="
-   [ $DEBUG -eq 1 ] && cat /tmp/root/headunit.json  >> ${LOGPATH}
-   [ $DEBUG -eq 1 ] && echo "===================="
+    [ $DEBUG -eq 1 ] && echo "=== headunit-wifi ==="
+    [ $DEBUG -eq 1 ] && cat /tmp/root/headunit.json  >> ${LOGPATH}
+    [ $DEBUG -eq 1 ] && echo "===================="
 }
 
 rm -f /tmp/root/headunit.status /tmp/root/headunit-wireless.status
@@ -50,7 +55,7 @@ start_headunit
 # loop forever. every 5 seconds,
 while true
 do
- NET_CHECK=`netstat -rn|awk '$2=="192.168.43.1" {print}'|wc -l|awk '{print $1}'`
+ PHONE_IP_ADDRESS=`netstat -rn|awk '$2~/192\.168\.43\.[0-9]{1,3}/ {print $2}'`
 
  if [ -e /tmp/root/usb_connect ]; then
   USBCHECK=1
@@ -60,15 +65,15 @@ do
   [ $DEBUG -eq 1 ] && echo "USB detach" >> ${LOGPATH}
  fi
 
- if [ $NET_CHECK == 1 ] && [ $USBCHECK == 0 ]; then
+ if [ ! -z $PHONE_IP_ADDRESS ] && [ $USBCHECK == 0 ]; then
     [ $DEBUG -eq 1 ] && echo "WLAN Mode" >> ${LOGPATH}
     if [ -e /tmp/root/headunit.status ]; then
         killall -q headunit
     fi
 
     if ! [ -e /tmp/root/headunit-wireless.status ]; then
-        [ $DEBUG -eq 1 ] && echo "Start WIRELESS" >> ${LOGPATH}
-        start_AAwireless
+        [ $DEBUG -eq 1 ] && echo "Start WIRELESS - Phone IP: $PHONE_IP_ADDRESS" >> ${LOGPATH}
+        start_AAwireless $PHONE_IP_ADDRESS
     fi
 
  else
