@@ -52,9 +52,9 @@ uint8_t turns[][3] = {
 };
 
 uint8_t roundabout(int32_t degrees){
-  uint8_t nearest = (((degrees + 15) / 30)*30);
+  uint8_t nearest = (degrees + 15) / 30;
   uint8_t offset = 37; //+49 for Left hand drive?
-  return(nearest+offset);
+  return(nearest + offset);
 }
 
 void hud_thread_func(std::condition_variable& quitcv, std::mutex& quitmutex, std::mutex& hudmutex){
