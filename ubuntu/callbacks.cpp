@@ -89,6 +89,11 @@ void DesktopEventCallbacks::VideoFocusRequest(int chan, const HU::VideoFocusRequ
     VideoFocusHappened(request.mode() == HU::VIDEO_FOCUS_MODE_FOCUSED, VIDEO_FOCUS_REQUESTOR::ANDROID_AUTO);
 }
 
+void DesktopEventCallbacks::CustomizeCarInfo(HU::ServiceDiscoveryResponse &carInfo)
+{
+    carInfo.set_driver_pos(config::rightHandDrive);
+}
+
 std::string DesktopEventCallbacks::GetCarBluetoothAddress()
 {
     return get_bluetooth_mac_address();
