@@ -23,9 +23,12 @@
 ../hu/hu_uti.cpp
 ../hu/hu_uti.h
 ../mazda/Makefile
+../mazda/Makefile
 ../mazda/bt/mzd_bluetooth.cpp
 ../mazda/bt/mzd_bluetooth.h
 ../mazda/callbacks.cpp
+../mazda/callbacks.cpp
+../mazda/callbacks.h
 ../mazda/callbacks.h
 ../mazda/dbus/generated_cmu.h
 ../mazda/gps/mzd_gps.cpp
@@ -42,9 +45,14 @@
 ../mazda/gps/nematode/src/NMEACommand.cpp
 ../mazda/gps/nematode/src/NMEAParser.cpp
 ../mazda/gps/nematode/src/NumberConversion.cpp
+../mazda/headunit.json
+../mazda/hud-test.cpp
+../mazda/main.cpp
 ../mazda/main.cpp
 ../mazda/main.h
 ../mazda/nm/mzd_nightmode.cpp
 ../mazda/nm/mzd_nightmode.h
 ../mazda/outputs.cpp
+../mazda/outputs.cpp
+../mazda/outputs.h
 ../mazda/outputs.h
