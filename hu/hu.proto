@@ -226,7 +226,7 @@ message SensorEvent
             GEAR_THIRD = 3; // 0x3
         }
         required GEAR gear = 1;
-   }
+    }
 
     repeated LocationData location_data = 1; // Working
     repeated CompassData compass_data = 2; // Sensor not yet supported
