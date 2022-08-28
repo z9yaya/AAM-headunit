@@ -470,7 +470,7 @@
       inner->set_type(HU::STREAM_TYPE_VIDEO);
       auto videoConfig = inner->add_video_configs();
       videoConfig->set_resolution(HU::ChannelDescriptor::OutputStreamChannel::VideoConfig::VIDEO_RESOLUTION_800x480); 
-      videoConfig->set_frame_rate(HU::ChannelDescriptor::OutputStreamChannel::VideoConfig::VIDEO_FPS_25);
+      videoConfig->set_frame_rate(HU::ChannelDescriptor::OutputStreamChannel::VideoConfig::VIDEO_FPS_60); //YM default 25 RaddarWild
       videoConfig->set_margin_width(0); 
       videoConfig->set_margin_height(0); 
       videoConfig->set_dpi(120);
