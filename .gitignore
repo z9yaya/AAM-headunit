@@ -12,3 +12,4 @@ bin/
 */version\.h
 .vscode
 *.creator.user.*
+mazda/m3-toolchain
