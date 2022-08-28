@@ -120,11 +120,6 @@ void MazdaEventCallbacks::VideoFocusRequest(int chan, const HU::VideoFocusReques
     });
 }
 
-void MazdaEventCallbacks::CustomizeCarInfo(HU::ServiceDiscoveryResponse &carInfo)
-{
-    carInfo.set_driver_pos(config::rightHandDrive);
-}
-
 std::string MazdaEventCallbacks::GetCarBluetoothAddress()
 {
     return get_bluetooth_mac_address();
@@ -763,11 +758,19 @@ void MazdaEventCallbacks::HandleNaviTurnDistance(IHUConnectionThreadInterface& s
     navi_data->distance_unit = now_unit;
     navi_data->distance = now_distance;
     navi_data->changed = 1;
+    navi_data->previous_msg = navi_data->previous_msg+1;
+    if (navi_data->previous_msg == 8) {
+      navi_data->previous_msg = 1;
+    }
   }
 
   if (navi_data->time_until != request.time_until()) {
     navi_data->time_until = request.time_until();
     navi_data->changed = 1;
+    navi_data->previous_msg = navi_data->previous_msg+1;
+    if (navi_data->previous_msg == 8) {
+      navi_data->previous_msg = 1;
+    }
   }
 
   hudmutex.unlock();

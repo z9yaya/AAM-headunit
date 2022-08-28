@@ -144,12 +144,12 @@
   {
     const int messageSize = message.ByteSize();
     const int requiredSize = messageSize + 2;
-    if (temp_assembly_buffer_out.size() < requiredSize)
+    if (temp_assembly_buffer->size() < requiredSize)
     {
-      temp_assembly_buffer_out.resize(requiredSize);
+      temp_assembly_buffer->resize(requiredSize);
     }
 
-    uint16_t* destMessageCode = reinterpret_cast<uint16_t*>(temp_assembly_buffer_out.data());
+    uint16_t* destMessageCode = reinterpret_cast<uint16_t*>(temp_assembly_buffer->data());
     *destMessageCode++ = htobe16(messageCode);
 
     if (!message.SerializeToArray(destMessageCode, messageSize))
@@ -159,20 +159,20 @@
     }
 
     logd ("Send %s on channel %i %s", message.GetTypeName().c_str(), chan, chan_get(chan));
-    //hex_dump("PB:", 80, temp_assembly_buffer_out.data(), requiredSize);
-    return hu_aap_enc_send(retry, chan, temp_assembly_buffer_out.data(), requiredSize, overrideTimeout);
+    //hex_dump("PB:", 80, temp_assembly_buffer->data(), requiredSize);
+    return hu_aap_enc_send(retry, chan, temp_assembly_buffer->data(), requiredSize, overrideTimeout);
 
   }
 
   int HUServer::hu_aap_enc_send_media_packet(int retry, int chan, uint16_t messageCode, uint64_t timeStamp, const byte* buffer, int bufferLen, int overrideTimeout)
   {
     const int requiredSize = bufferLen + 2 + 8;
-    if (temp_assembly_buffer_out.size() < requiredSize)
+    if (temp_assembly_buffer->size() < requiredSize)
     {
-      temp_assembly_buffer_out.resize(requiredSize);
+      temp_assembly_buffer->resize(requiredSize);
     }
 
-    uint16_t* destMessageCode = reinterpret_cast<uint16_t*>(temp_assembly_buffer_out.data());
+    uint16_t* destMessageCode = reinterpret_cast<uint16_t*>(temp_assembly_buffer->data());
     *destMessageCode++ = htobe16(messageCode);
 
     uint64_t* destTimestamp = reinterpret_cast<uint64_t*>(destMessageCode);
@@ -181,8 +181,8 @@
     memcpy(destTimestamp, buffer, bufferLen);
 
     //logd ("Send %s on channel %i %s", message.GetTypeName().c_str(), chan, chan_get(chan));
-    //hex_dump("PB:", 80, temp_assembly_buffer_out.data(), requiredSize);
-    return hu_aap_enc_send(retry, chan, temp_assembly_buffer_out.data(), requiredSize, overrideTimeout);
+    //hex_dump("PB:", 80, temp_assembly_buffer->data(), requiredSize);
+    return hu_aap_enc_send(retry, chan, temp_assembly_buffer->data(), requiredSize, overrideTimeout);
   }
 
   int HUServer::hu_aap_enc_send (int retry,int chan, byte * buf, int len, int overrideTimeout) {                 // Encrypt data and send: type,...
@@ -336,31 +336,31 @@
   int HUServer::hu_aap_unenc_send_blob(int retry, int chan, uint16_t messageCode, const byte* buffer, int bufferLen, int overrideTimeout)
   {
     const int requiredSize = bufferLen + 2;
-    if (temp_assembly_buffer_out.size() < requiredSize)
+    if (temp_assembly_buffer->size() < requiredSize)
     {
-      temp_assembly_buffer_out.resize(requiredSize);
+      temp_assembly_buffer->resize(requiredSize);
     }
 
-    uint16_t* destMessageCode = reinterpret_cast<uint16_t*>(temp_assembly_buffer_out.data());
+    uint16_t* destMessageCode = reinterpret_cast<uint16_t*>(temp_assembly_buffer->data());
     *destMessageCode++ = htobe16(messageCode);
 
      memcpy(destMessageCode, buffer, bufferLen);
 
     //logd ("Send %s on channel %i %s", message.GetTypeName().c_str(), chan, chan_get(chan));
-    //hex_dump("PB:", 80, temp_assembly_buffer_out.data(), requiredSize);
-    return hu_aap_unenc_send(retry, chan, temp_assembly_buffer_out.data(), requiredSize, overrideTimeout);
+    //hex_dump("PB:", 80, temp_assembly_buffer->data(), requiredSize);
+    return hu_aap_unenc_send(retry, chan, temp_assembly_buffer->data(), requiredSize, overrideTimeout);
   }
 
   int HUServer::hu_aap_unenc_send_message(int retry, int chan, uint16_t messageCode, const google::protobuf::MessageLite& message, int overrideTimeout)
   {
     const int messageSize = message.ByteSize();
     const int requiredSize = messageSize + 2;
-    if (temp_assembly_buffer_out.size() < requiredSize)
+    if (temp_assembly_buffer->size() < requiredSize)
     {
-      temp_assembly_buffer_out.resize(requiredSize);
+      temp_assembly_buffer->resize(requiredSize);
     }
 
-    uint16_t* destMessageCode = reinterpret_cast<uint16_t*>(temp_assembly_buffer_out.data());
+    uint16_t* destMessageCode = reinterpret_cast<uint16_t*>(temp_assembly_buffer->data());
     *destMessageCode++ = htobe16(messageCode);
 
     if (!message.SerializeToArray(destMessageCode, messageSize))
@@ -370,8 +370,8 @@
     }
 
     logd ("Send %s on channel %i %s", message.GetTypeName().c_str(), chan, chan_get(chan));
-    //hex_dump("PB:", 80, temp_assembly_buffer_out.data(), requiredSize);
-    return hu_aap_unenc_send(retry, chan, temp_assembly_buffer_out.data(), requiredSize, overrideTimeout);
+    //hex_dump("PB:", 80, temp_assembly_buffer->data(), requiredSize);
+    return hu_aap_unenc_send(retry, chan, temp_assembly_buffer->data(), requiredSize, overrideTimeout);
   }
 
 
@@ -470,10 +470,10 @@
       inner->set_type(HU::STREAM_TYPE_VIDEO);
       auto videoConfig = inner->add_video_configs();
       videoConfig->set_resolution(HU::ChannelDescriptor::OutputStreamChannel::VideoConfig::VIDEO_RESOLUTION_800x480);
-      videoConfig->set_frame_rate(HU::ChannelDescriptor::OutputStreamChannel::VideoConfig::VIDEO_FPS_30);
+      videoConfig->set_frame_rate(HU::ChannelDescriptor::OutputStreamChannel::VideoConfig::VIDEO_FPS_60); //default 30
       videoConfig->set_margin_width(0);
       videoConfig->set_margin_height(0);
-      videoConfig->set_dpi(140);
+      videoConfig->set_dpi(110); //default 140
       inner->set_available_while_in_call(true);
 
       callbacks.CustomizeOutputChannel(AA_CH_VID, *inner);
@@ -1166,7 +1166,6 @@
       delete ptr;
       loge("hu_queue_command error %d", ret);
     }
-    return ret;
   }
 
   int HUServer::hu_aap_shutdown()
@@ -1378,13 +1377,13 @@
     int min_size_hdr = 4;
     int have_len = 0;                                                   // Length remaining to process for all sub-packets plus 4/8 byte headers
 
-    std::array<bool,AA_CH_MAX> channel_has_first;
-    channel_has_first.fill(false);
-    int channelsWithIncompletePackets = 0;
-    do
+    bool has_last = false;
+    bool has_first = false;
+    int chan = -1;
+    while (!has_last)
     {                                              // While length remaining to process,... Process Rx packet:
       have_len = hu_aap_tra_recv (enc_buf, min_size_hdr, tmo);
-      if (have_len == 0 && channelsWithIncompletePackets == 0)
+      if (have_len == 0 && !has_first)
       {
         return 0;
       }
@@ -1399,16 +1398,16 @@
         hex_dump ("LR: ", 16, enc_buf, have_len);
       }
       int cur_chan = (int) enc_buf [0];                                         // Channel
-      if (cur_chan >= AA_CH_MAX)
+      if (cur_chan != chan && chan >= 0)
       {
-          loge("invalid channel");
-          return -1;
+          logd ("Interleaved channels, preserving incomplete packet for chan %s", chan_get (chan));
+          channel_assembly_buffers[chan] = temp_assembly_buffer;
+          temp_assembly_buffer = NULL;
+          has_first = has_last = false;
+          //return (-1);
       }
-      
-      //keep seperate state per-channel index
-      auto& temp_assembly_buffer = channel_assembly_buffers[cur_chan];
-      bool& has_first = channel_has_first[cur_chan];
-      
+      chan = cur_chan;
+
       int flags = enc_buf [1];                                              // Flags
       int frame_len = be16toh(*((uint16_t*)&enc_buf[2]));
 
@@ -1442,41 +1441,47 @@
         remaining_bytes_in_frame -= got_bytes;
       }
 
+      auto buffer = channel_assembly_buffers.find(chan);
+      if (buffer != channel_assembly_buffers.end()) // Have old buffer with incomplete data for channel
+      {
+        logd ("Found existing buffer for chan %s", chan_get (chan));
+        temp_assembly_buffer = buffer->second;
+      }
+      else if (temp_assembly_buffer == NULL) // Old buffer had incomplete data and was preserved, need to create new one
+      {
+        logd ("Created new buffer for chan %s", chan_get (chan));
+        temp_assembly_buffer = new std::vector<uint8_t>();
+      }
+
       if (flags & HU_FRAME_FIRST_FRAME)
       {
-        if (!has_first)
-        {
-            has_first = true;
-            channelsWithIncompletePackets++;
-        }
-        else
-        {
-            logw("Got a second first frame");
-        }
-        temp_assembly_buffer.clear(); // It's the first frame and old data may still be there, so clear
+        temp_assembly_buffer->clear(); // It's the first frame and old data may still be there, so clear
       }
-      else if (!has_first && temp_assembly_buffer.size() == 0) // No first frame yet and buffer is empty
+      else if (!has_first && temp_assembly_buffer->size() == 0) // No first frame yet and buffer is empty
       {
-        loge ("No HU_FRAME_FIRST_FRAME, and no incomplete buffer for chan %s", chan_get (cur_chan));
+        loge ("No HU_FRAME_FIRST_FRAME, and no incomplete buffer for chan %s", chan_get (chan));
         return (-1);
       }
+
+      has_first = true;
+      has_last = (flags & HU_FRAME_LAST_FRAME) != 0;
 
       if (has_total_size_header)
       {
         uint32_t total_size = be32toh(*((uint32_t*)&enc_buf[4]));
         logd("First only, total len %u", total_size);
-        temp_assembly_buffer.reserve(total_size);
+        temp_assembly_buffer->reserve(total_size);
       }
       else
       {
-        temp_assembly_buffer.reserve(frame_len);
+        temp_assembly_buffer->reserve(frame_len);
       }
 
 
       if (flags & HU_FRAME_ENCRYPTED)
       {
-          size_t cur_vec = temp_assembly_buffer.size();
-          temp_assembly_buffer.resize(cur_vec + frame_len); //just incase
+          size_t cur_vec = temp_assembly_buffer->size();
+          temp_assembly_buffer->resize(cur_vec + frame_len); //just incase
 
           int bytes_written = BIO_write (hu_ssl_rm_bio, &enc_buf[header_size], frame_len);           // Write encrypted to SSL input BIO
           if (bytes_written <= 0) {
@@ -1484,11 +1489,11 @@
             return (-1);
           }
           if (bytes_written != frame_len)
-            loge ("BIO_write() len: %d  bytes_written: %d  chan: %d %s", frame_len, bytes_written, cur_chan, chan_get (cur_chan));
+            loge ("BIO_write() len: %d  bytes_written: %d  chan: %d %s", frame_len, bytes_written, chan, chan_get (chan));
           else if (ena_log_verbo)
-            logd ("BIO_write() len: %d  bytes_written: %d  chan: %d %s", frame_len, bytes_written, cur_chan, chan_get (cur_chan));
+            logd ("BIO_write() len: %d  bytes_written: %d  chan: %d %s", frame_len, bytes_written, chan, chan_get (chan));
 
-          int bytes_read = SSL_read (hu_ssl_ssl, &temp_assembly_buffer[cur_vec], frame_len);   // Read decrypted to decrypted rx buf
+          int bytes_read = SSL_read (hu_ssl_ssl, &(*temp_assembly_buffer)[cur_vec], frame_len);   // Read decrypted to decrypted rx buf
           if (bytes_read <= 0 || bytes_read > frame_len) {
             loge ("SSL_read() bytes_read: %d  errno: %d", bytes_read, errno);
             hu_ssl_ret_log (bytes_read);
@@ -1497,32 +1502,25 @@
           if (ena_log_verbo)
             logd ("SSL_read() bytes_read: %d", bytes_read);
 
-          temp_assembly_buffer.resize(cur_vec + bytes_read);
+          temp_assembly_buffer->resize(cur_vec + bytes_read);
       }
       else
       {
-          temp_assembly_buffer.insert(temp_assembly_buffer.end(), &enc_buf[header_size], &enc_buf[frame_len+header_size]);
+          temp_assembly_buffer->insert(temp_assembly_buffer->end(), &enc_buf[header_size], &enc_buf[frame_len+header_size]);
       }
-      
-      if (flags & HU_FRAME_LAST_FRAME)
-      {
-          const int buf_len = temp_assembly_buffer.size();
-          if (buf_len >= 2)
-          {
-            uint16_t msg_type = be16toh(*reinterpret_cast<uint16_t*>(temp_assembly_buffer.data()));
-      
-            ret = iaap_msg_process (cur_chan, msg_type, &temp_assembly_buffer[2], buf_len - 2);          // Decrypt & Process 1 received encrypted message
-            if (ret < 0 && iaap_state != hu_STATE_STOPPED) {                                                    // If error...
-              loge ("Error iaap_msg_process() ret: %d  ", ret);
-              return (ret);
-            }
-          }
-          channelsWithIncompletePackets--;
-          has_first = false;
-      }
-      
     }
-    while (channelsWithIncompletePackets > 0);
+
+    const int buf_len = temp_assembly_buffer->size();
+    if (buf_len >= 2)
+    {
+      uint16_t msg_type = be16toh(*reinterpret_cast<uint16_t*>(temp_assembly_buffer->data()));
+
+      ret = iaap_msg_process (chan, msg_type, &(*temp_assembly_buffer)[2], buf_len - 2);          // Decrypt & Process 1 received encrypted message
+      if (ret < 0 && iaap_state != hu_STATE_STOPPED) {                                                    // If error...
+        loge ("Error iaap_msg_process() ret: %d  ", ret);
+        return (ret);
+      }
+    }
 
     return (ret);                                                       // Return value from the last iaap_recv_dec_process() call; should be 0
   }

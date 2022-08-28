@@ -536,331 +536,72 @@ class LIBPROTOBUF_EXPORT Reflection {
   // ReleaseMessage() will return the message the message object if it exists.
   // Otherwise, it may or may not return NULL.  In any case, if the return value
   // is non-NULL, the caller takes ownership of the pointer.
-  // If the field existed (HasField() is true), then the returned pointer will
-  // be the same as the pointer returned by MutableMessage().
-  // This function has the same effect as ClearField().
-  virtual Message* ReleaseMessage(Message* message,
-                                  const FieldDescriptor* field,
-                                  MessageFactory* factory = NULL) const = 0;
-
-
-  // Repeated field getters ------------------------------------------
-  // These get the value of one element of a repeated field.
-
-  virtual int32  GetRepeatedInt32 (const Message& message,
-                                   const FieldDescriptor* field,
-                                   int index) const = 0;
-  virtual int64  GetRepeatedInt64 (const Message& message,
-                                   const FieldDescriptor* field,
-                                   int index) const = 0;
-  virtual uint32 GetRepeatedUInt32(const Message& message,
-                                   const FieldDescriptor* field,
-                                   int index) const = 0;
-  virtual uint64 GetRepeatedUInt64(const Message& message,
-                                   const FieldDescriptor* field,
-                                   int index) const = 0;
-  virtual float  GetRepeatedFloat (const Message& message,
-                                   const FieldDescriptor* field,
-                                   int index) const = 0;
-  virtual double GetRepeatedDouble(const Message& message,
-                                   const FieldDescriptor* field,
-                                   int index) const = 0;
-  virtual bool   GetRepeatedBool  (const Message& message,
-                                   const FieldDescriptor* field,
-                                   int index) const = 0;
-  virtual string GetRepeatedString(const Message& message,
-                                   const FieldDescriptor* field,
-                                   int index) const = 0;
-  virtual const EnumValueDescriptor* GetRepeatedEnum(
-      const Message& message,
-      const FieldDescriptor* field, int index) const = 0;
-  virtual const Message& GetRepeatedMessage(
-      const Message& message,
-      const FieldDescriptor* field, int index) const = 0;
-
-  // See GetStringReference(), above.
-  virtual const string& GetRepeatedStringReference(
-      const Message& message, const FieldDescriptor* field,
-      int index, string* scratch) const = 0;
-
-
-  // Repeated field mutators -----------------------------------------
-  // These mutate the value of one element of a repeated field.
-
-  virtual void SetRepeatedInt32 (Message* message,
-                                 const FieldDescriptor* field,
-                                 int index, int32  value) const = 0;
-  virtual void SetRepeatedInt64 (Message* message,
-                                 const FieldDescriptor* field,
-                                 int index, int64  value) const = 0;
-  virtual void SetRepeatedUInt32(Message* message,
-                                 const FieldDescriptor* field,
-                                 int index, uint32 value) const = 0;
-  virtual void SetRepeatedUInt64(Message* message,
-                                 const FieldDescriptor* field,
-                                 int index, uint64 value) const = 0;
-  virtual void SetRepeatedFloat (Message* message,
-                                 const FieldDescriptor* field,
-                                 int index, float  value) const = 0;
-  virtual void SetRepeatedDouble(Message* message,
-                                 const FieldDescriptor* field,
-                                 int index, double value) const = 0;
-  virtual void SetRepeatedBool  (Message* message,
-                                 const FieldDescriptor* field,
-                                 int index, bool   value) const = 0;
-  virtual void SetRepeatedString(Message* message,
-                                 const FieldDescriptor* field,
-                                 int index, const string& value) const = 0;
-  virtual void SetRepeatedEnum(Message* message,
-                               const FieldDescriptor* field, int index,
-                               const EnumValueDescriptor* value) const = 0;
-  // Get a mutable pointer to an element of a repeated field with a message
-  // type.
-  virtual Message* MutableRepeatedMessage(
-      Message* message, const FieldDescriptor* field, int index) const = 0;
-
-
-  // Repeated field adders -------------------------------------------
-  // These add an element to a repeated field.
-
-  virtual void AddInt32 (Message* message,
-                         const FieldDescriptor* field, int32  value) const = 0;
-  virtual void AddInt64 (Message* message,
-                         const FieldDescriptor* field, int64  value) const = 0;
-  virtual void AddUInt32(Message* message,
-                         const FieldDescriptor* field, uint32 value) const = 0;
-  virtual void AddUInt64(Message* message,
-                         const FieldDescriptor* field, uint64 value) const = 0;
-  virtual void AddFloat (Message* message,
-                         const FieldDescriptor* field, float  value) const = 0;
-  virtual void AddDouble(Message* message,
-                         const FieldDescriptor* field, double value) const = 0;
-  virtual void AddBool  (Message* message,
-                         const FieldDescriptor* field, bool   value) const = 0;
-  virtual void AddString(Message* message,
-                         const FieldDescriptor* field,
-                         const string& value) const = 0;
-  virtual void AddEnum  (Message* message,
-                         const FieldDescriptor* field,
-                         const EnumValueDescriptor* value) const = 0;
-  // See MutableMessage() for comments on the "factory" parameter.
-  virtual Message* AddMessage(Message* message,
-                              const FieldDescriptor* field,
-                              MessageFactory* factory = NULL) const = 0;
-
-
-  // Repeated field accessors  -------------------------------------------------
-  // The methods above, e.g. GetRepeatedInt32(msg, fd, index), provide singular
-  // access to the data in a RepeatedField.  The methods below provide aggregate
-  // access by exposing the RepeatedField object itself with the Message.
-  // Applying these templates to inappropriate types will lead to an undefined
-  // reference at link time (e.g. GetRepeatedField<***double>), or possibly a
-  // template matching error at compile time (e.g. GetRepeatedPtrField<File>).
-  //
-  // Usage example: my_doubs = refl->GetRepeatedField<double>(msg, fd);
-
-  // for T = Cord and all protobuf scalar types except enums.
-  template<typename T>
-  const RepeatedField<T>& GetRepeatedField(
-      const Message&, const FieldDescriptor*) const;
-
-  // for T = Cord and all protobuf scalar types except enums.
-  template<typename T>
-  RepeatedField<T>* MutableRepeatedField(
-      Message*, const FieldDescriptor*) const;
-
-  // for T = string, google::protobuf::internal::StringPieceField
-  //         google::protobuf::Message & descendants.
-  template<typename T>
-  const RepeatedPtrField<T>& GetRepeatedPtrField(
-      const Message&, const FieldDescriptor*) const;
-
-  // for T = string, google::protobuf::internal::StringPieceField
-  //         google::protobuf::Message & descendants.
-  template<typename T>
-  RepeatedPtrField<T>* MutableRepeatedPtrField(
-      Message*, const FieldDescriptor*) const;
-
-  // Extensions ----------------------------------------------------------------
-
-  // Try to find an extension of this message type by fully-qualified field
-  // name.  Returns NULL if no extension is known for this name or number.
-  virtual const FieldDescriptor* FindKnownExtensionByName(
-      const string& name) const = 0;
-
-  // Try to find an extension of this message type by field number.
-  // Returns NULL if no extension is known for this name or number.
-  virtual const FieldDescriptor* FindKnownExtensionByNumber(
-      int number) const = 0;
-
-  // ---------------------------------------------------------------------------
-
- protected:
-  // Obtain a pointer to a Repeated Field Structure and do some type checking:
-  //   on field->cpp_type(),
-  //   on field->field_option().ctype() (if ctype >= 0)
-  //   of field->message_type() (if message_type != NULL).
-  // We use 1 routine rather than 4 (const vs mutable) x (scalar vs pointer).
-  virtual void* MutableRawRepeatedField(
-      Message* message, const FieldDescriptor* field, FieldDescriptor::CppType,
-      int ctype, const Descriptor* message_type) const = 0;
-
- private:
-  // Special version for specialized implementations of string.  We can't call
-  // MutableRawRepeatedField directly here because we don't have access to
-  // FieldOptions::* which are defined in descriptor.pb.h.  Including that
-  // file here is not possible because it would cause a circular include cycle.
-  void* MutableRawRepeatedString(
-      Message* message, const FieldDescriptor* field, bool is_string) const;
-
-  GOOGLE_DISALLOW_EVIL_CONSTRUCTORS(Reflection);
-};
-
-// Abstract interface for a factory for message objects.
-class LIBPROTOBUF_EXPORT MessageFactory {
- public:
-  inline MessageFactory() {}
-  virtual ~MessageFactory();
-
-  // Given a Descriptor, gets or constructs the default (prototype) Message
-  // of that type.  You can then call that message's New() method to construct
-  // a mutable message of that type.
-  //
-  // Calling this method twice with the same Descriptor returns the same
-  // object.  The returned object remains property of the factory.  Also, any
-  // objects created by calling the prototype's New() method share some data
-  // with the prototype, so these must be destroyed before the MessageFactory
-  // is destroyed.
-  //
-  // The given descriptor must outlive the returned message, and hence must
-  // outlive the MessageFactory.
-  //
-  // Some implementations do not support all types.  GetPrototype() will
-  // return NULL if the descriptor passed in is not supported.
-  //
-  // This method may or may not be thread-safe depending on the implementation.
-  // Each implementation should document its own degree thread-safety.
-  virtual const Message* GetPrototype(const Descriptor* type) = 0;
-
-  // Gets a MessageFactory which supports all generated, compiled-in messages.
-  // In other words, for any compiled-in type FooMessage, the following is true:
-  //   MessageFactory::generated_factory()->GetPrototype(
-  //     FooMessage::descriptor()) == FooMessage::default_instance()
-  // This factory supports all types which are found in
-  // DescriptorPool::generated_pool().  If given a descriptor from any other
-  // pool, GetPrototype() will return NULL.  (You can also check if a
-  // descriptor is for a generated message by checking if
-  // descriptor->file()->pool() == DescriptorPool::generated_pool().)
-  //
-  // This factory is 100% thread-safe; calling GetPrototype() does not modify
-  // any shared data.
-  //
-  // This factory is a singleton.  The caller must not delete the object.
-  static MessageFactory* generated_factory();
-
-  // For internal use only:  Registers a .proto file at static initialization
-  // time, to be placed in generated_factory.  The first time GetPrototype()
-  // is called with a descriptor from this file, |register_messages| will be
-  // called, with the file name as the parameter.  It must call
-  // InternalRegisterGeneratedMessage() (below) to register each message type
-  // in the file.  This strange mechanism is necessary because descriptors are
-  // built lazily, so we can't register types by their descriptor until we
-  // know that the descriptor exists.  |filename| must be a permanent string.
-  static void InternalRegisterGeneratedFile(
-      const char* filename, void (*register_messages)(const string&));
-
-  // For internal use only:  Registers a message type.  Called only by the
-  // functions which are registered with InternalRegisterGeneratedFile(),
-  // above.
-  static void InternalRegisterGeneratedMessage(const Descriptor* descriptor,
-                                               const Message* prototype);
-
-
- private:
-  GOOGLE_DISALLOW_EVIL_CONSTRUCTORS(MessageFactory);
-};
-
-#define DECLARE_GET_REPEATED_FIELD(TYPE)                         \
-template<>                                                       \
-LIBPROTOBUF_EXPORT                                               \
-const RepeatedField<TYPE>& Reflection::GetRepeatedField<TYPE>(   \
-    const Message& message, const FieldDescriptor* field) const; \
-                                                                 \
-template<>                                                       \
-RepeatedField<TYPE>* Reflection::MutableRepeatedField<TYPE>(     \
-    Message* message, const FieldDescriptor* field) const;
-
-DECLARE_GET_REPEATED_FIELD(int32)
-DECLARE_GET_REPEATED_FIELD(int64)
-DECLARE_GET_REPEATED_FIELD(uint32)
-DECLARE_GET_REPEATED_FIELD(uint64)
-DECLARE_GET_REPEATED_FIELD(float)
-DECLARE_GET_REPEATED_FIELD(double)
-DECLARE_GET_REPEATED_FIELD(bool)
-
-#undef DECLARE_GET_REPEATED_FIELD
-
-// =============================================================================
-// Implementation details for {Get,Mutable}RawRepeatedPtrField.  We provide
-// specializations for <string>, <StringPieceField> and <Message> and handle
-// everything else with the default template which will match any type having
-// a method with signature "static const google::protobuf::Descriptor* descriptor()".
-// Such a type presumably is a descendant of google::protobuf::Message.
-
-template<>
-inline const RepeatedPtrField<string>& Reflection::GetRepeatedPtrField<string>(
-    const Message& message, const FieldDescriptor* field) const {
-  return *static_cast<RepeatedPtrField<string>* >(
-      MutableRawRepeatedString(const_cast<Message*>(&message), field, true));
-}
-
-template<>
-inline RepeatedPtrField<string>* Reflection::MutableRepeatedPtrField<string>(
-    Message* message, const FieldDescriptor* field) const {
-  return static_cast<RepeatedPtrField<string>* >(
-      MutableRawRepeatedString(message, field, true));
-}
-
-
-// -----
-
-template<>
-inline const RepeatedPtrField<Message>& Reflection::GetRepeatedPtrField(
-    const Message& message, const FieldDescriptor* field) const {
-  return *static_cast<RepeatedPtrField<Message>* >(
-      MutableRawRepeatedField(const_cast<Message*>(&message), field,
-          FieldDescriptor::CPPTYPE_MESSAGE, -1,
-          NULL));
-}
-
-template<>
-inline RepeatedPtrField<Message>* Reflection::MutableRepeatedPtrField(
-    Message* message, const FieldDescriptor* field) const {
-  return static_cast<RepeatedPtrField<Message>* >(
-      MutableRawRepeatedField(message, field,
-          FieldDescriptor::CPPTYPE_MESSAGE, -1,
-          NULL));
-}
-
-template<typename PB>
-inline const RepeatedPtrField<PB>& Reflection::GetRepeatedPtrField(
-    const Message& message, const FieldDescriptor* field) const {
-  return *static_cast<RepeatedPtrField<PB>* >(
-      MutableRawRepeatedField(const_cast<Message*>(&message), field,
-          FieldDescriptor::CPPTYPE_MESSAGE, -1,
-          PB::default_instance().GetDescriptor()));
-}
-
-template<typename PB>
-inline RepeatedPtrField<PB>* Reflection::MutableRepeatedPtrField(
-    Message* message, const FieldDescriptor* field) const {
-  return static_cast<RepeatedPtrField<PB>* >(
-      MutableRawRepeatedField(message, field,
-          FieldDescriptor::CPPTYPE_MESSAGE, -1,
-          PB::default_instance().GetDescriptor()));
-}
-
-}  // namespace protobuf
-
-}  // namespace google
-#endif  // GOOGLE_PROTOBUF_MESSAGE_H__
+  // If the field existed (HasField() 1 2 , i , 7 7 4 7 6 3 2 9 1 5 3 2 8 8 2 4 7 2 9 , 1 4 2 8 0 9 2 7 6 8 4 0 0 1 8 8 7 6 6 3 , 1 3 1 0 7 2   / p r e f e t c h : 1         À6%òp?A    ^>A    Ø2  l    d1  °  ğ  t  04  Ü  È0  D   ì#  P"  h"  H   4  	   ¢    ÷   ! J å³È  ¦  C	 ¥  c  "   «   !  Š ;  %  ‚ Á  ¢  a S  "  ¢yš–{  õ8 #  ÷  ¿  ø  “  ™" g   
+\  &b Ï   
+\ 3  ›" ¯   œ" £   " '  " >¢Ìä D -  Àò  °Ï?A     ·’%†¼ÿÿ\ D e v i c e \ H a r d d i s k V o l u m e 2 \ U s e r s \ z 9 y a y \ A p p D a t a \ L o c a l \ M i c r o s o f t \ E d g e \ U s e r   D a t a \ D e f a u l t \ C a c h e \ C a c h e _ D a t a \ f _ 0 0 2 e 1 b   m 3 2  Àh è3  œ%   à?A            €SÛÚ«ÿÿpQx%†¼ÿÿD3      $       Ğ      0                          À8  è3  œ%  à?A            €SÛÚ«ÿÿpQx%†¼ÿÿ       ÀD 
+§á?A        C          Pà×    à»Ó«ÿÿ`%%Ü«ÿÿÍ      |2  K € Àh è3  œ%  Hâ?A                    p[%†¼ÿÿ «                                                   Àò  ¥ø?A     §’%†¼ÿÿ\ D e v i c e \ H a r d d i s k V o l u m e 2 \ U s e r s \ z 9 y a y \ A p p D a t a \ L o c a l \ M i c r o s o f t \ E d g e \ U s e r   D a t a \ D e f a u l t \ C a c h e \ C a c h e _ D a t a \ f _ 0 0 2 e 1 d     C   Àh è3  œ%  @A             ³áÙ«ÿÿp!†¼ÿÿøŸ      $       `                                 À8  è3  œ%  @A             ³áÙ«ÿÿp!†¼ÿÿ       Àh è3  œ%  Æ@A                     ·|%†¼ÿÿ 
+                                                  Àò  1'@A     —’%†¼ÿÿ\ D e v i c e \ H a r d d i s k V o l u m e 2 \ U s e r s \ z 9 y a y \ A p p D a t a \ L o c a l \ M i c r o s o f t \ E d g e \ U s e r   D a t a \ D e f a u l t \ C a c h e \ C a c h e _ D a t a \ f _ 0 0 2 e 1 f   Ó«ÿÿ Àò  Å2@A    p‘’%†¼ÿÿ\ D e v i c e \ H a r d d i s k V o l u m e 2 \ U s e r s \ z 9 y a y \ A p p D a t a \ L o c a l \ M i c r o s o f t \ E d g e \ U s e r   D a t a \ D e f a u l t \ C a c h e \ C a c h e _ D a t a \ f _ 0 0 2 e 2 0   À% ÀD 
+>@A        C          €DØ    à»Ó«ÿÿ`%%Ü«ÿÿø      |2      Àò  F@@A     ‡’%†¼ÿÿ\ D e v i c e \ H a r d d i s k V o l u m e 2 \ U s e r s \ z 9 y a y \ A p p D a t a \ L o c a l \ M i c r o s o f t \ E d g e \ U s e r   D a t a \ D e f a u l t \ C a c h e \ C a c h e _ D a t a \ f _ 0 0 2 e 2 1   À(  ÀD 
+™M@A        C          EØ    à»Ó«ÿÿ`%%Ü«ÿÿô      |2      Àò  ®O@A    p’%†¼ÿÿ\ D e v i c e \ H a r d d i s k V o l u m e 2 \ U s e r s \ z 9 y a y \ A p p D a t a \ L o c a l \ M i c r o s o f t \ E d g e \ U s e r   D a t a \ D e f a u l t \ C a c h e \ C a c h e _ D a t a \ f _ 0 0 2 e 2 2   c e \  ÀD 
+O]@A        C           IØ    à»Ó«ÿÿ`%%Ü«ÿÿ      |2  e r  Àò  O_@A     w’%†¼ÿÿ\ D e v i c e \ H a r d d i s k V o l u m e 2 \ U s e r s \ z 9 y a y \ A p p D a t a \ L o c a l \ M i c r o s o f t \ E d g e \ U s e r   D a t a \ D e f a u l t \ C a c h e \ C a c h e _ D a t a \ f _ 0 0 2 e 2 3   Ü4     Àò  Zi@A    pq’%†¼ÿÿ\ D e v i c e \ H a r d d i s k V o l u m e 2 \ U s e r s \ z 9 y a y \ A p p D a t a \ L o c a l \ M i c r o s o f t \ E d g e \ U s e r   D a t a \ D e f a u l t \ C a c h e \ C a c h e _ D a t a \ f _ 0 0 2 e 2 4   ‡6+ Àò  Ñr@A     g’%†¼ÿÿ\ D e v i c e \ H a r d d i s k V o l u m e 2 \ U s e r s \ z 9 y a y \ A p p D a t a \ L o c a l \ M i c r o s o f t \ E d g e \ U s e r   D a t a \ D e f a u l t \ C a c h e \ C a c h e _ D a t a \ f _ 0 0 2 e 2 5   s h e  ÀD 
+S~@A        C          @KØ    à»Ó«ÿÿ`%%Ü«ÿÿ}      |2       Àò  _€@A    pa’%†¼ÿÿ\ D e v i c e \ H a r d d i s k V o l u m e 2 \ U s e r s \ z 9 y a y \ A p p D a t a \ L o c a l \ M i c r o s o f t \ E d g e \ U s e r   D a t a \ D e f a u l t \ C a c h e \ C a c h e _ D a t a \ f _ 0 0 2 e 2 6   D e v  Àò  \Š@A     W’%†¼ÿÿ\ D e v i c e \ H a r d d i s k V o l u m e 2 \ U s e r s \ z 9 y a y \ A p p D a t a \ L o c a l \ M i c r o s o f t \ E d g e \ U s e r   D a t a \ D e f a u l t \ C a c h e \ C a c h e _ D a t a \ f _ 0 0 2 e 2 7   i n d  Àò  ’@A    pQ’%†¼ÿÿ\ D e v i c e \ H a r d d i s k V o l u m e 2 \ U s e r s \ z 9 y a y \ A p p D a t a \ L o c a l \ M i c r o s o f t \ E d g e \ U s e r   D a t a \ D e f a u l t \ C a c h e \ C a c h e _ D a t a \ f _ 0 0 2 e 2 8   d l l  Àò  á™@A     I’%†¼ÿÿ\ D e v i c e \ H a r d d i s k V o l u m e 2 \ U s e r s \ z 9 y a y \ A p p D a t a \ L o c a l \ M i c r o s o f t \ E d g e \ U s e r   D a t a \ D e f a u l t \ C a c h e \ C a c h e _ D a t a \ f _ 0 0 2 e 2 9   _ü   ÀD 
+¨@A        C          °UØ    à»Ó«ÿÿ`%%Ü«ÿÿ¶      |2  r d  Àò  Sª@A     +’%†¼ÿÿ\ D e v i c e \ H a r d d i s k V o l u m e 2 \ U s e r s \ z 9 y a y \ A p p D a t a \ L o c a l \ M i c r o s o f t \ E d g e \ U s e r   D a t a \ D e f a u l t \ C a c h e \ C a c h e _ D a t a \ f _ 0 0 2 e 2 a   y s t  ÀD 
+»@A        C          àUØ    à»Ó«ÿÿ`%%Ü«ÿÿ–      |2  ü   Àò  úÍ@A     7”%†¼ÿÿ\ D e v i c e \ H a r d d i s k V o l u m e 2 \ U s e r s \ z 9 y a y \ A p p D a t a \ L o c a l \ M i c r o s o f t \ E d g e \ U s e r   D a t a \ D e f a u l t \ C a c h e \ C a c h e _ D a t a \ f _ 0 0 2 e 2 c     ¨#   ÀD 
+6Û@A        C          PVØ    à»Ó«ÿÿ`%%Ü«ÿÿ      |2  fÒd Àò  …İ@A    p1”%†¼ÿÿ\ D e v i c e \ H a r d d i s k V o l u m e 2 \ U s e r s \ z 9 y a y \ A p p D a t a \ L o c a l \ M i c r o s o f t \ E d g e \ U s e r   D a t a \ D e f a u l t \ C a c h e \ C a c h e _ D a t a \ f _ 0 0 2 e 2 d   zÒ   ÀD 
+Ğë@A        C          `WØ    à»Ó«ÿÿ`%%Ü«ÿÿn      |2  u
+ Àò  ©î@A     '”%†¼ÿÿ\ D e v i c e \ H a r d d i s k V o l u m e 2 \ U s e r s \ z 9 y a y \ A p p D a t a \ L o c a l \ M i c r o s o f t \ E d g e \ U s e r   D a t a \ D e f a u l t \ C a c h e \ C a c h e _ D a t a \ f _ 0 0 2 e 2 e          ÀD 
+4û@A        C          ÀWØ    à»Ó«ÿÿ`%%Ü«ÿÿÕ      |2  e \  Àò  ÆAA     ”%†¼ÿÿ\ D e v i c e \ H a r d d i s k V o l u m e 2 \ U s e r s \ z 9 y a y \ A p p D a t a \ L o c a l \ M i c r o s o f t \ E d g e \ U s e r   D a t a \ D e f a u l t \ C a c h e \ C a c h e _ D a t a \ f _ 0 0 2 e 3 0   w s \  ÀD 
+şAA        C           XØ    à»Ó«ÿÿ`%%Ü«ÿÿÊ      |2       Àò  qAA    p”%†¼ÿÿ\ D e v i c e \ H a r d d i s k V o l u m e 2 \ U s e r s \ z 9 y a y \ A p p D a t a \ L o c a l \ M i c r o s o f t \ E d g e \ U s e r   D a t a \ D e f a u l t \ C a c h e \ C a c h e _ D a t a \ f _ 0 0 2 e 3 1   ˆ`ü   ÀD 
+í.AA        C          p]Ø    à»Ó«ÿÿ`%%Ü«ÿÿs      |2  n d  Àò  u1AA     ”%†¼ÿÿ\ D e v i c e \ H a r d d i s k V o l u m e 2 \ U s e r s \ z 9 y a y \ A p p D a t a \ L o c a l \ M i c r o s o f t \ E d g e \ U s e r   D a t a \ D e f a u l t \ C a c h e \ C a c h e _ D a t a \ f _ 0 0 2 e 3 2   d l l  À8  è3  œ%  ¹=AA            @Í!Ú«ÿÿ                ÀD 
+CAA        C          ÀaØ    à»Ó«ÿÿ`%%Ü«ÿÿ      |2  s k  ÀØ%ÕDAA    ëp?A    à$  8  d1  4  ø  ,  p  ¨#  |  @3  |2  è3  %  ø2    (     " FŒø [<  "  Šb ;  "  Š3 C  "  Š Ãi   "  ÷-  ó$ RJ Nœ Ë  ”" —  %& ÒF w	    R+ Ns Ò Û   %& "R% N_ ã  "  V 1 +  "  ŠY ó  ¢ fÒ '+  "  ŠÏ   "  j Ä[  "  n=³  "  n,2Ò&	jÒŠÊq o  š¦ ¶Œ4Ï  "  ŠI £  "  n…{   "  ŠÊ,    "  Š  jR( ¶Œâ Ó  "  :á1  "  j uË  "  Š§ §  "  j€¢÷  "  Š ï
+  "  j€Ú«  "  Šl   "  Š( §  "  jR.>g j€
+ã  ¢  ŠŠ g  "  j ê—  "  Š„ ë  "  j ‘¿  "  ŠS _
+  "  Šô 2Òéj 02Ò¦j z2ÒÔj #2Ò± Š5÷  &  ŠH C  &  ŠT «  &  Š7   &  Š3 Ç  &  Š3 7  &  Š* ›   &  Š“2Òlj€Ë2Roj€52ÒAj kn ` Àò  CGAA    p”%†¼ÿÿ\ D e v i c e \ H a r d d i s k V o l u m e 2 \ U s e r s \ z 9 y a y \ A p p D a t a \ L o c a l \ M i c r o s o f t \ E d g e \ U s e r   D a t a \ D e f a u l t \ C a c h e \ C a c h e _ D a t a \ f _ 0 0 2 e 3 3    :  ÀD 
+AJAA                 0Í	   p[%†¼ÿÿP€}Ú«ÿÿ      `   ¤  ÀD 
+KAA        C          ,Ş    à»Ó«ÿÿàÛ«ÿÿk	      è3  ü   Àò  TAA    pñ“%†¼ÿÿ\ D e v i c e \ H a r d d i s k V o l u m e 2 \ U s e r s \ z 9 y a y \ A p p D a t a \ L o c a l \ M i c r o s o f t \ E d g e \ U s e r   D a t a \ D e f a u l t \ C a c h e \ C a c h e _ D a t a \ f _ 0 0 2 e 3 4   w i n  ÀD 
+0dAA        C          €fØ    à»Ó«ÿÿàÛ«ÿÿ.      |2  ”&   Àò  ¢fAA     ç“%†¼ÿÿ\ D e v i c e \ H a r d d i s k V o l u m e 2 \ U s e r s \ z 9 y a y \ A p p D a t a \ L o c a l \ M i c r o s o f t \ E d g e \ U s e r   D a t a \ D e f a u l t \ C a c h e \ C a c h e _ D a t a \ f _ 0 0 2 e 3 5   ’    ÀD 
+¨wAA        C          `iØ    à»Ó«ÿÿ Ù˜Ú«ÿÿ´      |2      Àò  )AA     ×“%†¼ÿÿ\ D e v i c e \ H a r d d i s k V o l u m e 2 \ U s e r s \ z 9 y a y \ A p p D a t a \ L o c a l \ M i c r o s o f t \ E d g e \ U s e r   D a t a \ D e f a u l t \ C a c h e \ C a c h e _ D a t a \ f _ 0 0 2 e 3 7     ²  ÀD 
+r AA        C          kØ    à»Ó«ÿÿ Ù˜Ú«ÿÿ5      |2  e v  Àj H4  ¨*  "¡AA            ¨*  H4   €U«Œıÿÿ U«Œıÿÿ  HNk    àGNk          ğÅhFü   àMk          ’    Àò  V»AA     Ç“%†¼ÿÿ\ D e v i c e \ H a r d d i s k V o l u m e 2 \ U s e r s \ z 9 y a y \ A p p D a t a \ L o c a l \ M i c r o s o f t \ E d g e \ U s e r   D a t a \ D e f a u l t \ C a c h e \ C a c h e _ D a t a \ f _ 0 0 2 e 3 9          Àü 
+D4  @4  
+ÉAA              –÷   7     @4  )M6 ¦0…b      –÷                  \ D e v i c e \ H a r d d i s k V o l u m e 2 \ P r o g r a m   F i l e s   ( x 8 6 ) \ M i c r o s o f t \ E d g e \ A p p l i c a t i o n \ m s e d g e . e x e       À¾ 
+D4  @4  ¿ÊAA              çaü   P     @4  ‹ã ìT{      çaü                  \ D e v i c e \ H a r d d i s k V o l u m e 2 \ W i n d o w s \ S y s t e m 3 2 \ n t d l l . d l l      ÀD 
+åÍAA        C          °O×    à»Ó«ÿÿ Ù˜Ú«ÿÿõ      |2       Àò  zĞAA    pÁ“%†¼ÿÿ\ D e v i c e \ H a r d d i s k V o l u m e 2 \ U s e r s \ z 9 y a y \ A p p D a t a \ L o c a l \ M i c r o s o f t \ E d g e \ U s e r   D a t a \ D e f a u l t \ C a c h e \ C a c h e _ D a t a \ f _ 0 0 2 e 3 a   #†¼ÿÿ À%/åAA    ÏDAA    `   |2  %  ô  (  è3  ô*  H4  ¼  l  p3  „+  D4  ¬3  l  d	      %  F ¹
+ÒW0  $ ç  ó  ÒC ç  €$  Vm
+Ò²	c:  $ Ò7 _  —& b 0 ^Ø¿ &" 
+Òz
+Ÿ9  $ g  
+  —    2ÒÛ6  $ C  ı  ë  ş  >Ò=[  ù0  S  ÿ   ÀD 
+«æAA        C          ``Ö    à»Ó«ÿÿ Ù˜Ú«ÿÿä      |2    Àò  `éAA     ·“%†¼ÿÿ\ D e v i c e \ H a r d d i s k V o l u m e 2 \ U s e r s \ z 9 y a y \ A p p D a t a \ L o c a l \ M i c r o s o f t \ E d g e \ U s e r   D a t a \ D e f a u l t \ C a c h e \ C a c h e _ D a t a \ f _ 0 0 2 e 3 b   èÙ«ÿÿ ÀD 
+DBA        C          °(×    à»Ó«ÿÿ Ù˜Ú«ÿÿ¼      |2  «ÿÿ Àò  ÎBA    p±“%†¼ÿÿ\ D e v i c e \ H a r d d i s k V o l u m e 2 \ U s e r s \ z 9 y a y \ A p p D a t a \ L o c a l \ M i c r o s o f t \ E d g e \ U s e r   D a t a \ D e f a u l t \ C a c h e \ C a c h e _ D a t a \ f _ 0 0 2 e 3 c   \ z 9  Àò  5BA     §“%†¼ÿÿ\ D e v i c e \ H a r d d i s k V o l u m e 2 \ U s e r s \ z 9 y a y \ A p p D a t a \ L o c a l \ M i c r o s o f t \ E d g e \ U s e r   D a t a \ D e f a u l t \ C a c h e \ C a c h e _ D a t a \ f _ 0 0 2 e 3 d   5 9    ÀD 
+sBA        C          ğb×    à»Ó«ÿÿ Ù˜Ú«ÿÿ      |2  ü   Àò  àBA    p¡“%†¼ÿÿ\ D e v i c e \ H a r d d i s k V o l u m e 2 \ U s e r s \ z 9 y a y \ A p p D a t a \ L o c a l \ M i c r o s o f t \ E d g e \ U s e r   D a t a \ D e f a u l t \ C a c h e \ C a c h e _ D a t a \ f _ 0 0 2 e 3 e   ;"  ÀD 
+'/BA        C          0‡×    à»Ó«ÿÿ Ù˜Ú«ÿÿ      |2  k   Àò  †1BA     —“%†¼ÿÿ\ D e v i c e \ H a r d d i s k V o l u m e 2 \ U s e r s \ z 9 y a y \ A p p D a t a \ L o c a l \ M i c r o s o f t \ E d g e \ U s e r   D a t a \ D e f a u l t \ C a c h e \ C a c h e _ D a t a \ f _ 0 0 2 e 3 f   ~`ü   À 
+D4  @4  <xBA              ¤Vü   €     @4  ”g ¦0…b      ¤Vü                  \ D e v i c e \ H a r d d i s k V o l u m e 2 \ P r o g r a m   F i l e s   ( x 8 6 ) \ M i c r o s o f t \ E d g e \ A p p l i c a t i o n \ 1 0 1 . 0 . 1 2 1 0 . 5 3 \ m s e d g e _ e l f . d l l    ÀÄ 
+D4  @4  O®BA              @-Ó   à
+     @4  ?Ò
+ 4e8A    @-Ó                  \ D e v i c e \ H a r d d i s k V o l u m e 2 \ W i n d o w s \ S y s t e m 3 2 \ a d v a p i 3 2 . d l l   @&   ÀÀ 
+D4  @4  ó¸BA             aü   à	     @4  ]è	 9ŸOV    aü                  \ D e v i c e \ H a r d d i s k V o l u m e 2 \ W i n d o w s \ S y s t e m 3 2 \ m s v c r t . d l l    ÀÂ 
+D4  @4  îÁBA             Xaü   À	     @4  Ãë	 !tÕS    Xaü                  \ D e v i c e \ H a r d d i s k V o l u m e 2 \ W i n d o w s \ S y s t e m 3 2 \ s e c h o s t . d l l   Ô!†¼ÿÿ ÀÀ 
+D4  @4  ËBA             ì_ü   P     @4  Ì îüZ±    ì_ü                  \ D e v i c e \ H a r d d i s k V o l u m e 2 \ W i n d o w s \ S y s t e m 3 2 \ r p c r t 4 . d l l    ÀÆ 
+D4  @4  ~)CA             Ú^ü   À      @4  J Cšè(      Ú^ü                  \ D e v i c e \ H a r d d i s k V o l u m e 2 \ W i n d o w s \ S y s t e m 3 2 \ c r y p t b a s e . d l l      ÀÔ 
+D4  @4  8CA             ã_ü         @4  şÖ ÔÓé    ã_ü                  \ D e v i c e \ H a r d d i s k V o l u m e 2 \ W i n d o w s \ S y s t e m 3 2 \ b c r y p t p r i m i t i v e s . d l l   y \  Àò  5bCA     ‹%†¼ÿÿ\ D e v i c e \ H a r d d i s k V o l u m e 2 \ U s e r s \ z 9 y a y \ A p p D a t a \ L o c a l \ M i c r o s o f t \ E d g e \ U s e r   D a t a \ D e f a u l t \ C a c h e \ C a c h e _ D a t a \ f _ 0 0 2 e 4 e   b i n  ÀD 
+tCA        C          Ü    à»Ó«ÿÿ Ù˜Ú«ÿÿ9      |2       Àò  ”CA     {%†¼ÿÿ\ D e v i c e \ H a r d d i s k V o l u m e 2 \ U s e r s \ z 9 y a y \ A p p D a t a \ L o c a l \ M i c r o s o f t \ E d g e \ U s e r   D a t a \ D e f a u l t \ C a c h e \ C a c h e _ D a t a \ f _ 0 0 2 e 4 f   ë4     ÀÀ 
+(4  $4  —ÄCA             ¾aü   Ğ
+     $4  Zò
+ ¯ĞL    ¾aü                  \ D e v i c e \ H a r d d i s k V o l u m e 2 \ W i n d o w s \ S y s t e m 3 2 \ S H C o r e . d l l    ÀÀ (4  $4  ]åCA             ¾aü   Ğ
+     $4  Zò
+ ¯ĞL    ¾aü                  \ D e v i c e \ H a r d d i s k V o l u m e 2 \ W i n d o w s \ S y s t e m 3 2 \ S H C o r e . d l l    Àj (4  $4  ˆüCA           $4  \4    [«Œıÿÿ Z«Œıÿÿ  €ª    ğª          €©¹ÿû    uª          i s k  ÀÀ 
+(4  $4  ÖùDA             k_ü   p     $4  7˜ üŞÌ^    k_ü                  \ D e v i c e \ H a r d d i s k V o l u m e 2 \ W i n d o w s \ S y s t e m 3 2 \ b c r y p t . d l l    ÀÂ 
+(4  $4  üEA             ™_ü   `     $4  L ?…m    ™_ü                  \ D e v i c e \ H a r d d i s k V o l u m e 2 \ W i n d o w s \ S y s t e m 3 2 \ c r y p t 3 2 . d l l   i s k  ÀD 
+Ò4EA        C          À{>
+    9İ%†¼ÿÿ`Å}Ú«ÿÿÆ      |2  p p  ÀD 
+›8EA        C          Ğ{>
+    9İ%†¼ÿÿ`Å}Ú«ÿÿª      |2  †¼ÿÿ ÀD 
+b<EA        C          à{>
+    9İ%†¼ÿÿ`Å}Ú«ÿÿº      |2       ÀD 
+@EA        C          ğ{>
+    9İ%†¼ÿÿ`Å}Ú«ÿÿ/      |2  s k  ÀD 
+¼CEA        C           |>
+    9İ%†¼ÿÿ`Å}Ú«ÿÿ:      |2  f t  ÀD 
+öFEA        C          |>
+    9İ%†¼ÿÿ`Å}Ú«ÿÿj      |2  c h  Àt%®HEA    )åAA       ì  €  |2  l  D4    Ì3  À3  D    à0  (4  ¤  Ø2  ˜3     ¥  ˆ2 ŠÒ« N€w
+ŠÒÙN 	ŠÒN ŠR×NVa VÒ-" V¢  #VRA" VÒW:* VRê V¸Î^Œ‡V8% bšN€r^RSÕ [  % f—&  “

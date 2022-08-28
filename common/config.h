@@ -13,7 +13,6 @@ public:
     static std::string configFile;
     static bool launchOnDevice;
     static bool carGPS;
-    static bool rightHandDrive;
     static HU_TRANSPORT_TYPE transport_type;
     static std::string phoneIpAddress;
     static bool reverseGPS;
